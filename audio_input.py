@@ -12,3 +12,6 @@ def main():
 
 if __name__ == '__main__':
     main()
+
+def check_audio(path):
+    return os.path.exists(path)
