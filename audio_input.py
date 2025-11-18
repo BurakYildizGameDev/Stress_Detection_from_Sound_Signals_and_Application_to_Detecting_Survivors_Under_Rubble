@@ -8,10 +8,14 @@ if hasattr(sys.stdout, 'reconfigure'):
         pass
 
 def main():
-    print('[!] Acoustic Survivor Detection Input Tool')
+    if len(sys.argv) < 2:
+        print('Kullanim: python audio_input.py <ses_dosyasi.wav/mp3>')
+        sys.exit(1)
+    audio_path = sys.argv[1]
+    if not os.path.exists(audio_path):
+        print(f'Hata: {audio_path} bulunamadi')
+        sys.exit(1)
+    print(f'[*] Analiz ediliyor: {audio_path}')
 
 if __name__ == '__main__':
     main()
-
-def check_audio(path):
-    return os.path.exists(path)
