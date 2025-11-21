@@ -9,3 +9,6 @@ def _resample(y, sr, target_sr):
     if sr == target_sr:
         return y
     return librosa.resample(y, orig_sr=sr, target_sr=target_sr)
+
+def extract_rms(y):
+    return np.mean(librosa.feature.rms(y=y))
