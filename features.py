@@ -12,3 +12,6 @@ def _resample(y, sr, target_sr):
 
 def extract_rms(y):
     return np.mean(librosa.feature.rms(y=y))
+
+def extract_zcr(y):
+    return np.mean(librosa.feature.zero_crossing_rate(y))
