@@ -21,3 +21,6 @@ def extract_centroid(y, sr):
 
 def extract_mfcc(y, sr, n_mfcc=N_MFCC):
     return librosa.feature.mfcc(y=y, sr=sr, n_mfcc=n_mfcc)
+
+def mfcc_stats(mfcc):
+    return np.mean(mfcc, axis=1), np.std(mfcc, axis=1)
