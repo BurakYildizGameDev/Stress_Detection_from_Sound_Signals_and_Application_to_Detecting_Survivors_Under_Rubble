@@ -18,3 +18,6 @@ def extract_zcr(y):
 
 def extract_centroid(y, sr):
     return np.mean(librosa.feature.spectral_centroid(y=y, sr=sr))
+
+def extract_mfcc(y, sr, n_mfcc=N_MFCC):
+    return librosa.feature.mfcc(y=y, sr=sr, n_mfcc=n_mfcc)
