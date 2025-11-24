@@ -15,3 +15,6 @@ def extract_rms(y):
 
 def extract_zcr(y):
     return np.mean(librosa.feature.zero_crossing_rate(y))
+
+def extract_centroid(y, sr):
+    return np.mean(librosa.feature.spectral_centroid(y=y, sr=sr))
