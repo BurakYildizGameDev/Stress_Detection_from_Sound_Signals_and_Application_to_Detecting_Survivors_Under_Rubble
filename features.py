@@ -24,3 +24,10 @@ def extract_mfcc(y, sr, n_mfcc=N_MFCC):
 
 def mfcc_stats(mfcc):
     return np.mean(mfcc, axis=1), np.std(mfcc, axis=1)
+
+HUMAN_N_FEATURES = 2 * N_MFCC + 2
+EMERGENCY_N_FEATURES = N_MFCC + 2
+FEATURE_SPECS = {
+    'human': {'version': 1, 'sr': HUMAN_SR, 'n_features': HUMAN_N_FEATURES, 'clip_sec': 2.0},
+    'emergency': {'version': 1, 'sr': EMERGENCY_SR, 'n_features': EMERGENCY_N_FEATURES, 'clip_sec': None},
+}
