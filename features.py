@@ -31,3 +31,13 @@ FEATURE_SPECS = {
     'human': {'version': 1, 'sr': HUMAN_SR, 'n_features': HUMAN_N_FEATURES, 'clip_sec': 2.0},
     'emergency': {'version': 1, 'sr': EMERGENCY_SR, 'n_features': EMERGENCY_N_FEATURES, 'clip_sec': None},
 }
+
+def human_features(y, sr=HUMAN_SR):
+    y = _resample(y, sr, HUMAN_SR)
+    mfcc = librosa.feature.mfcc(y=y, sr=HUMAN_SR, n_mfcc=N_MFCC)
+    return np.hstack([
+        np.mean(mfcc, axis=1),
+        np.std(mfcc, axis=1),
+        np.mean(librosa.feature.zero_crossing_rate(y)),
+        np.mean(librosa.feature.rms(y=y)),
+    ]).astype(np.float32)
