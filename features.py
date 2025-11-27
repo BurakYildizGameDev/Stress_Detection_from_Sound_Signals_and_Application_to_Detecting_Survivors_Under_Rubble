@@ -49,3 +49,5 @@ def emergency_features(y, sr=EMERGENCY_SR):
         np.mean(librosa.feature.rms(y=y)),
         np.mean(librosa.feature.spectral_centroid(y=y, sr=EMERGENCY_SR)),
     ]).astype(np.float32)
+
+FEATURE_FUNCS = {'human': human_features, 'emergency': emergency_features}
