@@ -41,3 +41,11 @@ def human_features(y, sr=HUMAN_SR):
         np.mean(librosa.feature.zero_crossing_rate(y)),
         np.mean(librosa.feature.rms(y=y)),
     ]).astype(np.float32)
+
+def emergency_features(y, sr=EMERGENCY_SR):
+    y = _resample(y, sr, EMERGENCY_SR)
+    return np.hstack([
+        np.mean(librosa.feature.mfcc(y=y, sr=EMERGENCY_SR, n_mfcc=N_MFCC), axis=1),
+        np.mean(librosa.feature.rms(y=y)),
+        np.mean(librosa.feature.spectral_centroid(y=y, sr=EMERGENCY_SR)),
+    ]).astype(np.float32)
