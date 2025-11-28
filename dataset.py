@@ -7,3 +7,10 @@ MODELS_DIR = os.path.join(ROOT, 'models')
 MANIFEST_PATH = os.path.join(DATA_DIR, 'manifest.csv')
 
 EMERGENCY_CLASSES = ('normal', 'stress', 'panic')
+
+EMOTION_TO_CLASS = {
+    'neutral': 'normal',
+    'calm': 'normal',
+    'angry': 'stress',
+    'fear': 'panic',
+}
