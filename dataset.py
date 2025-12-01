@@ -19,3 +19,6 @@ ESC50_HUMAN_VOCAL = {
     20: 'crying_baby', 21: 'sneezing', 23: 'breathing',
     24: 'coughing', 26: 'laughing', 28: 'snoring',
 }
+
+class Skip(Exception):
+    """Dosya manifest'e alinmaz; mesaj atlanma nedenidir."""
