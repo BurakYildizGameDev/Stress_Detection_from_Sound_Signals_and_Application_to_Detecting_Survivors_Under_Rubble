@@ -14,3 +14,8 @@ EMOTION_TO_CLASS = {
     'angry': 'stress',
     'fear': 'panic',
 }
+
+ESC50_HUMAN_VOCAL = {
+    20: 'crying_baby', 21: 'sneezing', 23: 'breathing',
+    24: 'coughing', 26: 'laughing', 28: 'snoring',
+}
