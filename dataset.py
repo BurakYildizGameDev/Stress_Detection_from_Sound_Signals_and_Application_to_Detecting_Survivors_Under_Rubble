@@ -22,3 +22,10 @@ ESC50_HUMAN_VOCAL = {
 
 class Skip(Exception):
     """Dosya manifest'e alinmaz; mesaj atlanma nedenidir."""
+
+def _ravdess(name, _):
+    p = name[:-4].split('-')
+    if len(p) != 7:
+        raise Skip('RAVDESS semasina uymuyor')
+    emotions = {'01': 'neutral', '02': 'calm', '03': 'happy', '04': 'sad', '05': 'angry', '06': 'fear', '07': 'disgust', '08': 'surprise'}
+    return f'actor{p[6]}', emotions[p[2]], name[:-4]
