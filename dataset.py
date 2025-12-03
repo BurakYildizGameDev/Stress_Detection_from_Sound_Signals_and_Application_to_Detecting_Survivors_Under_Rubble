@@ -29,3 +29,11 @@ def _ravdess(name, _):
         raise Skip('RAVDESS semasina uymuyor')
     emotions = {'01': 'neutral', '02': 'calm', '03': 'happy', '04': 'sad', '05': 'angry', '06': 'fear', '07': 'disgust', '08': 'surprise'}
     return f'actor{p[6]}', emotions[p[2]], name[:-4]
+
+import re
+def _berlin(name, _):
+    m = re.fullmatch(r'(\d\d)([a-z]\d\d)([WLEAFTN])([a-z])\.wav', name)
+    if not m:
+        raise Skip('EMO-DB semasina uymuyor')
+    emotions = {'W': 'angry', 'L': 'boredom', 'E': 'disgust', 'A': 'fear', 'F': 'happy', 'T': 'sad', 'N': 'neutral'}
+    return m.group(1), emotions[m.group(3)], name[:-4]
