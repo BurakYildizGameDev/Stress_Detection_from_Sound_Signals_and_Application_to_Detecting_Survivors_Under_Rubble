@@ -37,3 +37,11 @@ def _berlin(name, _):
         raise Skip('EMO-DB semasina uymuyor')
     emotions = {'W': 'angry', 'L': 'boredom', 'E': 'disgust', 'A': 'fear', 'F': 'happy', 'T': 'sad', 'N': 'neutral'}
     return m.group(1), emotions[m.group(3)], name[:-4]
+
+def _tess(name, _):
+    p = name[:-4].split('_')
+    if len(p) != 3:
+        raise Skip('TESS semasina uymuyor')
+    speaker = {'OA': 'OAF'}.get(p[0], p[0])
+    emotion = {'ps': 'surprise'}.get(p[2].lower(), p[2].lower())
+    return speaker, emotion, f'{speaker}_{p[1]}_{emotion}'
