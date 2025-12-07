@@ -45,3 +45,9 @@ def _tess(name, _):
     speaker = {'OA': 'OAF'}.get(p[0], p[0])
     emotion = {'ps': 'surprise'}.get(p[2].lower(), p[2].lower())
     return speaker, emotion, f'{speaker}_{p[1]}_{emotion}'
+
+def _subesco(name, _):
+    p = name[:-4].split('_')
+    if len(p) != 7:
+        raise Skip('SUBESCO semasina uymuyor')
+    return f'{p[0]}_{p[1]}', p[5].lower(), name[:-4]
