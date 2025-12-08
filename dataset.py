@@ -51,3 +51,10 @@ def _subesco(name, _):
     if len(p) != 7:
         raise Skip('SUBESCO semasina uymuyor')
     return f'{p[0]}_{p[1]}', p[5].lower(), name[:-4]
+
+def _savee(name, _):
+    m = re.fullmatch(r'([A-Z]{2})_(a|d|f|h|n|sa|su)(\d+)\.wav', name)
+    if not m:
+        raise Skip('SAVEE semasina uymuyor')
+    emotions = {'a': 'angry', 'd': 'disgust', 'f': 'fear', 'h': 'happy', 'n': 'neutral', 'sa': 'sad', 'su': 'surprise'}
+    return m.group(1), emotions[m.group(2)], name[:-4]
