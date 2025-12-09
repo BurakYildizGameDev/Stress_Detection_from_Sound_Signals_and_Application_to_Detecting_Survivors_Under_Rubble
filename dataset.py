@@ -58,3 +58,9 @@ def _savee(name, _):
         raise Skip('SAVEE semasina uymuyor')
     emotions = {'a': 'angry', 'd': 'disgust', 'f': 'fear', 'h': 'happy', 'n': 'neutral', 'sa': 'sad', 'su': 'surprise'}
     return m.group(1), emotions[m.group(2)], name[:-4]
+
+def _jl_corpus(name, _):
+    p = name[:-4].split('_')
+    if len(p) < 4:
+        raise Skip('JL-Corpus semasina uymuyor')
+    return f'{p[0]}_{p[1]}', p[2].lower(), name[:-4]
