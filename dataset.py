@@ -64,3 +64,12 @@ def _jl_corpus(name, _):
     if len(p) < 4:
         raise Skip('JL-Corpus semasina uymuyor')
     return f'{p[0]}_{p[1]}', p[2].lower(), name[:-4]
+
+def _crema_d(name, _):
+    p = name[:-4].split('_')
+    if len(p) != 4:
+        raise Skip('CREMA-D semasina uymuyor')
+    emotions = {'NEU': 'neutral', 'HAP': 'happy', 'SAD': 'sad', 'ANG': 'angry', 'FEA': 'fear', 'DIS': 'disgust'}
+    if p[1] not in emotions:
+        raise Skip(f'Bilinmeyen duygu: {p[1]}')
+    return p[0], emotions[p[1]], name[:-4]
