@@ -73,3 +73,12 @@ def _crema_d(name, _):
     if p[1] not in emotions:
         raise Skip(f'Bilinmeyen duygu: {p[1]}')
     return p[0], emotions[p[1]], name[:-4]
+
+def _esc50(name, _):
+    p = name[:-4].split('-')
+    if len(p) != 5:
+        raise Skip('ESC-50 semasina uymuyor')
+    target = int(p[4])
+    if target in ESC50_HUMAN_VOCAL:
+        raise Skip(f'ESC-50 insan vokali ({ESC50_HUMAN_VOCAL[target]})')
+    return f'env_{p[0]}', f'esc_{target}', name[:-4]
