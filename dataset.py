@@ -82,3 +82,14 @@ def _esc50(name, _):
     if target in ESC50_HUMAN_VOCAL:
         raise Skip(f'ESC-50 insan vokali ({ESC50_HUMAN_VOCAL[target]})')
     return f'env_{p[0]}', f'esc_{target}', name[:-4]
+
+from dataclasses import dataclass, asdict, fields
+@dataclass
+class ClipRecord:
+    dataset: str
+    rel_path: str
+    speaker: str
+    emotion: str
+    role: str
+    split: str
+    clip_id: str
