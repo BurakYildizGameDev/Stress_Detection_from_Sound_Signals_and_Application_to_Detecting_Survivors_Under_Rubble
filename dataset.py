@@ -101,3 +101,13 @@ def trim_silence(y, top_db=30):
     if len(non_silent) == 0:
         return y
     return np.concatenate([y[start:end] for start, end in non_silent])
+
+def slice_windows(y, sr, win_sec=1.0, hop_sec=1.0):
+    win_len = int(win_sec * sr)
+    hop_len = int(hop_sec * sr)
+    windows = []
+    for start in range(0, max(1, len(y) - win_len + 1), hop_len):
+        w = y[start:start + win_len]
+        if len(w) == win_len:
+            windows.append(w)
+    return windows if windows else [y]
