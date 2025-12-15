@@ -93,3 +93,11 @@ class ClipRecord:
     role: str
     split: str
     clip_id: str
+
+import librosa
+import numpy as np
+def trim_silence(y, top_db=30):
+    non_silent = librosa.effects.split(y, top_db=top_db)
+    if len(non_silent) == 0:
+        return y
+    return np.concatenate([y[start:end] for start, end in non_silent])
