@@ -10,3 +10,8 @@ def test_berlin_parsing():
     spk, emo, cid = _berlin('03a01Fa.wav', None)
     assert spk == '03'
     assert emo == 'happy'
+
+from dataset import _esc50
+def test_esc50_vocal_exclusion():
+    with pytest.raises(Skip):
+        _esc50('1-10021-A-20.wav', None)
