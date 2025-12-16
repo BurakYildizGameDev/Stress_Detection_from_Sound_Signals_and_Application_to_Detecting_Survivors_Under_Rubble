@@ -111,3 +111,14 @@ def slice_windows(y, sr, win_sec=1.0, hop_sec=1.0):
         if len(w) == win_len:
             windows.append(w)
     return windows if windows else [y]
+
+import csv
+def write_manifest(records, path=MANIFEST_PATH):
+    os.makedirs(os.path.dirname(path), exist_ok=True)
+    if not records:
+        return
+    with open(path, 'w', newline='', encoding='utf-8') as f:
+        writer = csv.DictWriter(f, fieldnames=[f.name for f in fields(records[0])])
+        writer.writeheader()
+        for r in records:
+            writer.writerow(asdict(r))
