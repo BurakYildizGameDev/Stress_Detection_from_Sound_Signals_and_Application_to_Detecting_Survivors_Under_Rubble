@@ -15,3 +15,9 @@ from dataset import _esc50
 def test_esc50_vocal_exclusion():
     with pytest.raises(Skip):
         _esc50('1-10021-A-20.wav', None)
+
+from dataset import trim_silence
+def test_trim_silence_all_silent():
+    y = np.zeros(16000, dtype=np.float32)
+    trimmed = trim_silence(y)
+    assert len(trimmed) == 16000
