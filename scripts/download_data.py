@@ -15,3 +15,9 @@ DATASETS = {
 
 def download_file(url, target_path):
     print(f'Downloading {url} to {target_path}...')
+
+import zipfile
+def extract_archive(archive_path, extract_dir):
+    if zipfile.is_zipfile(archive_path):
+        with zipfile.ZipFile(archive_path, 'r') as z:
+            z.extractall(extract_dir)
