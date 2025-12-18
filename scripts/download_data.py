@@ -21,3 +21,11 @@ def extract_archive(archive_path, extract_dir):
     if zipfile.is_zipfile(archive_path):
         with zipfile.ZipFile(archive_path, 'r') as z:
             z.extractall(extract_dir)
+
+import hashlib
+def verify_sha256(path, expected_hash):
+    h = hashlib.sha256()
+    with open(path, 'rb') as f:
+        while chunk := f.read(8192):
+            h.update(chunk)
+    return h.hexdigest() == expected_hash
