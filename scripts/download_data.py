@@ -12,3 +12,6 @@ DATASETS = {
     'esc50': {'name': 'ESC-50', 'url': 'https://github.com/karolpiczak/ESC-50/archive/master.zip'},
     'ravdess': {'name': 'RAVDESS', 'url': 'https://zenodo.org/record/1188976/files/Audio_Speech_Actors_01-24.zip'},
 }
+
+def download_file(url, target_path):
+    print(f'Downloading {url} to {target_path}...')
