@@ -10,3 +10,7 @@ from multiprocessing import Pool, cpu_count
 def run_parallel(tasks, n_workers=None):
     n = n_workers or cpu_count()
     print(f'Using {n} workers.')
+
+import numpy as np
+def save_npz(path, **arrays):
+    np.savez_compressed(path, **arrays)
