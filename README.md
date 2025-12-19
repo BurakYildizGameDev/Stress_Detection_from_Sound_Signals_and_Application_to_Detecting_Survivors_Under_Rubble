@@ -7,3 +7,7 @@ Research prototype for acoustic survivor detection.
 ## Acoustic Features
 
 MFCCs, Spectral Centroid, and ZCR are extracted to distinguish human vocalizations from debris grinding noises.
+
+## Data
+
+Instructions for downloading ESC-50 and speech emotional corpora.
