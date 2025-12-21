@@ -6,3 +6,8 @@ def test_feature_shapes():
     y = np.zeros(HUMAN_SR, dtype=np.float32)
     h = human_features(y, HUMAN_SR)
     assert h.shape == (28,)
+
+def test_resample_consistency():
+    y = np.ones(8000, dtype=np.float32)
+    h = human_features(y, sr=8000)
+    assert len(h) == 28
