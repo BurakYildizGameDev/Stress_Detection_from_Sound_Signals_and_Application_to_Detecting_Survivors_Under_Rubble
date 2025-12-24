@@ -51,3 +51,5 @@ def emergency_features(y, sr=EMERGENCY_SR):
     ]).astype(np.float32)
 
 FEATURE_FUNCS = {'human': human_features, 'emergency': emergency_features}
+
+# Note: input y must be mono 1D float32 array
