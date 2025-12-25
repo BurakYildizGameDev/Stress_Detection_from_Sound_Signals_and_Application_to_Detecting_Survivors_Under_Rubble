@@ -12,3 +12,6 @@ from scipy.signal import butter, sosfilt
 def lowpass(y, sr, cutoff_hz, order=4):
     sos = butter(order, cutoff_hz, btype='low', fs=sr, output='sos')
     return sosfilt(sos, y).astype(np.float32)
+
+def gain_db(y, db):
+    return (y * 10 ** (db / 20)).astype(np.float32)
