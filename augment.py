@@ -18,3 +18,7 @@ def gain_db(y, db):
 
 def pitch_shift(y, sr, steps):
     return librosa.effects.pitch_shift(y, sr=sr, n_steps=steps).astype(np.float32)
+
+def time_shift(y, max_ratio, rng):
+    limit = int(len(y) * max_ratio)
+    return np.roll(y, int(rng.integers(-limit, limit + 1))) if limit else y.copy()
