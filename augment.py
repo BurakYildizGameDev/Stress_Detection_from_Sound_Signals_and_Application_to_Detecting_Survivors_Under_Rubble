@@ -15,3 +15,6 @@ def lowpass(y, sr, cutoff_hz, order=4):
 
 def gain_db(y, db):
     return (y * 10 ** (db / 20)).astype(np.float32)
+
+def pitch_shift(y, sr, steps):
+    return librosa.effects.pitch_shift(y, sr=sr, n_steps=steps).astype(np.float32)
