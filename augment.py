@@ -22,3 +22,12 @@ def pitch_shift(y, sr, steps):
 def time_shift(y, max_ratio, rng):
     limit = int(len(y) * max_ratio)
     return np.roll(y, int(rng.integers(-limit, limit + 1))) if limit else y.copy()
+
+AUGMENTATIONS = {
+    'human': {
+        'noise': lambda y, sr, rng: add_noise_snr(y, rng.uniform(15, 30), rng),
+    },
+    'non_human': {
+        'noise': lambda y, sr, rng: add_noise_snr(y, rng.uniform(20, 35), rng),
+    },
+}
