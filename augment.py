@@ -31,3 +31,9 @@ AUGMENTATIONS = {
         'noise': lambda y, sr, rng: add_noise_snr(y, rng.uniform(20, 35), rng),
     },
 }
+
+CONDITIONS = {
+    'clean': lambda y, sr, rng: y,
+    'noise_20db': lambda y, sr, rng: add_noise_snr(y, 20, rng),
+    'noise_10db': lambda y, sr, rng: add_noise_snr(y, 10, rng),
+}
