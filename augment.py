@@ -1,5 +1,18 @@
+"""
+Ses dönüşümleri.
+
+- AUGMENTATIONS: eğitim verisini çoğaltmak için. Öznitelik çıkarımı bunları
+  yalnızca "train" bölmesindeki kayıtlara uygular; test kayıtları hiçbir zaman
+  artırılmaz, böylece bir kaydın kopyaları bölmenin iki tarafına düşemez.
+- CONDITIONS: değerlendirmede modelin enkaz benzeri koşullara dayanıklılığını
+  ölçmek için (gürültü, uzaklık/zayıflama, beton/moloz benzeri alçak geçiren filtre).
+
+Her fonksiyon (y, sr, rng) alır ve yeni bir float32 dizi döndürür.
+"""
 import numpy as np
 import librosa
+from scipy.signal import butter, sosfilt
+
 
 def add_noise_snr(y, snr_db, rng):
     power = np.mean(y ** 2)
@@ -8,32 +21,48 @@ def add_noise_snr(y, snr_db, rng):
     noise = rng.standard_normal(len(y)) * np.sqrt(power / 10 ** (snr_db / 10))
     return (y + noise).astype(np.float32)
 
-from scipy.signal import butter, sosfilt
+
 def lowpass(y, sr, cutoff_hz, order=4):
-    sos = butter(order, cutoff_hz, btype='low', fs=sr, output='sos')
+    sos = butter(order, cutoff_hz, btype="low", fs=sr, output="sos")
     return sosfilt(sos, y).astype(np.float32)
+
 
 def gain_db(y, db):
     return (y * 10 ** (db / 20)).astype(np.float32)
 
+
 def pitch_shift(y, sr, steps):
     return librosa.effects.pitch_shift(y, sr=sr, n_steps=steps).astype(np.float32)
+
 
 def time_shift(y, max_ratio, rng):
     limit = int(len(y) * max_ratio)
     return np.roll(y, int(rng.integers(-limit, limit + 1))) if limit else y.copy()
 
+
+# Eğitim artırmaları (rol -> {ad: fonksiyon})
 AUGMENTATIONS = {
-    'human': {
-        'noise': lambda y, sr, rng: add_noise_snr(y, rng.uniform(15, 30), rng),
+    "human": {
+        "noise": lambda y, sr, rng: add_noise_snr(y, rng.uniform(15, 30), rng),
+        "pitch_up": lambda y, sr, rng: pitch_shift(y, sr, 2),
+        "pitch_down": lambda y, sr, rng: pitch_shift(y, sr, -2),
     },
-    'non_human': {
-        'noise': lambda y, sr, rng: add_noise_snr(y, rng.uniform(20, 35), rng),
+    "non_human": {
+        "noise": lambda y, sr, rng: add_noise_snr(y, rng.uniform(20, 35), rng),
+        "shift": lambda y, sr, rng: time_shift(y, 0.05, rng),
+        "volume": lambda y, sr, rng: gain_db(y, rng.uniform(-2, 2)),
     },
 }
 
+# Değerlendirme koşulları. Gerçek enkaz akustiğinin yerini tutmaz; yalnızca
+# modelin bu yönlerdeki bozulmaya ne kadar duyarlı olduğunu gösterir.
 CONDITIONS = {
-    'clean': lambda y, sr, rng: y,
-    'noise_20db': lambda y, sr, rng: add_noise_snr(y, 20, rng),
-    'noise_10db': lambda y, sr, rng: add_noise_snr(y, 10, rng),
+    "clean": lambda y, sr, rng: y,
+    "noise_20db": lambda y, sr, rng: add_noise_snr(y, 20, rng),
+    "noise_10db": lambda y, sr, rng: add_noise_snr(y, 10, rng),
+    "noise_0db": lambda y, sr, rng: add_noise_snr(y, 0, rng),
+    "far_-20db": lambda y, sr, rng: gain_db(y, -20),
+    "lowpass_1k": lambda y, sr, rng: lowpass(y, sr, 1000),
+    "lowpass_400": lambda y, sr, rng: lowpass(y, sr, 400),
+    "rubble_sim": lambda y, sr, rng: add_noise_snr(gain_db(lowpass(y, sr, 400), -20), 10, rng),
 }
