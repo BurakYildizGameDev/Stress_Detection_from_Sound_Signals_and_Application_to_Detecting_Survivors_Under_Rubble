@@ -34,3 +34,9 @@ def test_lowpass():
     y = np.sin(np.linspace(0, 100, 16000)).astype(np.float32)
     filtered = lowpass(y, 16000, 400)
     assert not np.isnan(filtered).any()
+
+from augment import gain_db
+def test_gain():
+    y = np.ones(100, dtype=np.float32)
+    scaled = gain_db(y, -6)
+    assert np.isclose(scaled[0], 0.501187, atol=1e-3)
