@@ -21,3 +21,10 @@ def test_trim_silence_all_silent():
     y = np.zeros(16000, dtype=np.float32)
     trimmed = trim_silence(y)
     assert len(trimmed) == 16000
+
+from augment import add_noise_snr
+def test_add_noise_snr():
+    rng = np.random.default_rng(0)
+    y = np.ones(1000, dtype=np.float32)
+    noisy = add_noise_snr(y, 20, rng)
+    assert len(noisy) == len(y)
