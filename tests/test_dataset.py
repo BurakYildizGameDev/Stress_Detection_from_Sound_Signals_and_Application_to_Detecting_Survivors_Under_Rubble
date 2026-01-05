@@ -28,3 +28,9 @@ def test_add_noise_snr():
     y = np.ones(1000, dtype=np.float32)
     noisy = add_noise_snr(y, 20, rng)
     assert len(noisy) == len(y)
+
+from augment import lowpass
+def test_lowpass():
+    y = np.sin(np.linspace(0, 100, 16000)).astype(np.float32)
+    filtered = lowpass(y, 16000, 400)
+    assert not np.isnan(filtered).any()
