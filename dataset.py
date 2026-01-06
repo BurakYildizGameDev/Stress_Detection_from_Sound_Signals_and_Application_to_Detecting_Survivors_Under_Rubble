@@ -122,3 +122,10 @@ def write_manifest(records, path=MANIFEST_PATH):
         writer.writeheader()
         for r in records:
             writer.writerow(asdict(r))
+
+def group_by_speaker(records):
+    from collections import defaultdict
+    groups = defaultdict(list)
+    for r in records:
+        groups[r.speaker].append(r)
+    return groups
