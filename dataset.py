@@ -129,3 +129,10 @@ def group_by_speaker(records):
     for r in records:
         groups[r.speaker].append(r)
     return groups
+
+def split_speakers(speakers, test_fraction=0.2, seed=42):
+    rng = random.Random(seed)
+    spk_list = sorted(list(speakers))
+    rng.shuffle(spk_list)
+    n_test = max(1, int(len(spk_list) * test_fraction))
+    return set(spk_list[n_test:]), set(spk_list[:n_test])
