@@ -136,3 +136,5 @@ def split_speakers(speakers, test_fraction=0.2, seed=42):
     rng.shuffle(spk_list)
     n_test = max(1, int(len(spk_list) * test_fraction))
     return set(spk_list[n_test:]), set(spk_list[:n_test])
+
+SPLIT_SEED = 42
