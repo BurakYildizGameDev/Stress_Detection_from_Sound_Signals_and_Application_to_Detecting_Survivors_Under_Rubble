@@ -138,3 +138,5 @@ def split_speakers(speakers, test_fraction=0.2, seed=42):
     return set(spk_list[n_test:]), set(spk_list[:n_test])
 
 SPLIT_SEED = 42
+
+TEST_SPEAKER_FRACTION = 0.2
