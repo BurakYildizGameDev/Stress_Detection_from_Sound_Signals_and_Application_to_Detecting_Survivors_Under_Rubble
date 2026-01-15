@@ -140,3 +140,9 @@ def split_speakers(speakers, test_fraction=0.2, seed=42):
 SPLIT_SEED = 42
 
 TEST_SPEAKER_FRACTION = 0.2
+
+def validate_split_integrity(records):
+    train_spks = {r.speaker for r in records if r.split == 'train'}
+    test_spks = {r.speaker for r in records if r.split == 'test'}
+    overlap = train_spks & test_spks
+    assert len(overlap) == 0, f'Data leakage: {overlap}'
