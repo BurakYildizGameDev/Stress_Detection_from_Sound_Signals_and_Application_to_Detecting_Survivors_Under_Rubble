@@ -40,3 +40,9 @@ def test_gain():
     y = np.ones(100, dtype=np.float32)
     scaled = gain_db(y, -6)
     assert np.isclose(scaled[0], 0.501187, atol=1e-3)
+
+def test_speaker_split():
+    from dataset import split_speakers
+    speakers = [f'spk_{i}' for i in range(10)]
+    train, test = split_speakers(speakers, 0.2, 42)
+    assert len(train & test) == 0
