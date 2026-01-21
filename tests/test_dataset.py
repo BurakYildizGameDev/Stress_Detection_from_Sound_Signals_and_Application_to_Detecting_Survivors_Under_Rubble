@@ -46,3 +46,9 @@ def test_speaker_split():
     speakers = [f'spk_{i}' for i in range(10)]
     train, test = split_speakers(speakers, 0.2, 42)
     assert len(train & test) == 0
+
+from dataset import slice_windows
+def test_slice_short():
+    y = np.zeros(8000, dtype=np.float32)
+    wins = slice_windows(y, 16000, win_sec=1.0)
+    assert len(wins) == 1
