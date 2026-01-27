@@ -8,3 +8,5 @@ if __name__ == '__main__':
 import numpy as np
 def export_arrays(X_train, y_train, X_test, y_test, out_dir):
     pass
+
+from sklearn.utils.class_weight import compute_class_weight
