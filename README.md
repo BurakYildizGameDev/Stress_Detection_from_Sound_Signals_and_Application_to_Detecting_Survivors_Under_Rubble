@@ -11,3 +11,7 @@ MFCCs, Spectral Centroid, and ZCR are extracted to distinguish human vocalizatio
 ## Data
 
 Instructions for downloading ESC-50 and speech emotional corpora.
+
+### Speaker-Disjoint Splits
+
+To prevent data leakage, speakers in test sets never appear in training.
