@@ -66,3 +66,5 @@ CONDITIONS = {
     "lowpass_400": lambda y, sr, rng: lowpass(y, sr, 400),
     "rubble_sim": lambda y, sr, rng: add_noise_snr(gain_db(lowpass(y, sr, 400), -20), 10, rng),
 }
+
+# Zero-power arrays are guarded against division by zero
