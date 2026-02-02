@@ -68,3 +68,5 @@ CONDITIONS = {
 }
 
 # Zero-power arrays are guarded against division by zero
+
+# Concrete attenuation models 400Hz low-pass cutoff
