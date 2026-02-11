@@ -18,3 +18,5 @@ def train_human_detector(X, y):
     return clf
 
 # max_depth=None, min_samples_leaf=2
+
+# class_weight='balanced'
