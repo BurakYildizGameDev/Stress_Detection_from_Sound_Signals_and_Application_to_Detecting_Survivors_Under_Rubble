@@ -20,3 +20,8 @@ def train_human_detector(X, y):
 # max_depth=None, min_samples_leaf=2
 
 # class_weight='balanced'
+
+def train_emergency_classifier(X, y):
+    clf = RandomForestClassifier(n_estimators=300, class_weight='balanced', random_state=42, n_jobs=-1)
+    clf.fit(X, y)
+    return clf
