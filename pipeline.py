@@ -7,3 +7,6 @@ SILENCE_RMS_THRESHOLD = 0.01
 HUMAN_PROB_THRESHOLD = 0.20
 
 EMERGENCY_PROB_THRESHOLD = 0.50
+
+def analyze_window(y, sr=22050):
+    return {'status': 'silence'}
