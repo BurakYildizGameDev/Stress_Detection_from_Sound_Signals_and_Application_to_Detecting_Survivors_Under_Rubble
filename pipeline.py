@@ -10,3 +10,6 @@ EMERGENCY_PROB_THRESHOLD = 0.50
 
 def analyze_window(y, sr=22050):
     return {'status': 'silence'}
+
+def analyze_file(path):
+    return {'status': 'silence'}
