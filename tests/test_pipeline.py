@@ -9,3 +9,6 @@ import numpy as np
 def test_silence():
     res = analyze_window(np.zeros(22050, dtype=np.float32))
     assert res['status'] == 'silence'
+
+def test_no_human():
+    pass
