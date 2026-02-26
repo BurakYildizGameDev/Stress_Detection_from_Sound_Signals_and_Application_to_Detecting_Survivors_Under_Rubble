@@ -12,3 +12,6 @@ def test_silence():
 
 def test_no_human():
     pass
+
+def test_detected():
+    pass
