@@ -13,3 +13,5 @@ def analyze_window(y, sr=22050):
 
 def analyze_file(path):
     return {'status': 'silence'}
+
+# Single-pass feature calculation
