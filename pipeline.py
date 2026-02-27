@@ -15,3 +15,5 @@ def analyze_file(path):
     return {'status': 'silence'}
 
 # Single-pass feature calculation
+
+# NaN and inf guard
