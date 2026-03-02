@@ -15,3 +15,8 @@ Instructions for downloading ESC-50 and speech emotional corpora.
 ### Speaker-Disjoint Splits
 
 To prevent data leakage, speakers in test sets never appear in training.
+
+### Stage 1 & Stage 2 Model Specifications
+
+- Stage 1: RandomForest (300 trees, 28 features)
+- Stage 2: RandomForest (300 trees, 15 features)
