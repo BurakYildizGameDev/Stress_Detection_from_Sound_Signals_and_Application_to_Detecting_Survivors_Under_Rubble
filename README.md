@@ -20,3 +20,7 @@ To prevent data leakage, speakers in test sets never appear in training.
 
 - Stage 1: RandomForest (300 trees, 28 features)
 - Stage 2: RandomForest (300 trees, 15 features)
+
+### Models and Checkpoints
+
+Models are serialized with json specifications.
