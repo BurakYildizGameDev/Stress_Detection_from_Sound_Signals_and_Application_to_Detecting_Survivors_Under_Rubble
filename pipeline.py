@@ -19,3 +19,5 @@ def analyze_file(path):
 # NaN and inf guard
 
 # Verified: inference latency 35-50ms
+
+# Verifies feature_spec version compatibility
