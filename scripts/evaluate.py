@@ -1,0 +1,6 @@
+#!/usr/bin/env python3
+"""Evaluation runner script."""
+def main():
+    print('[*] Running evaluation...')
+if __name__ == '__main__':
+    main()
