@@ -7,3 +7,5 @@ def read_events(): return []
 
 def write_status(s): pass
 def read_status(): return None
+
+def listener_state(s): return 'stopped'
