@@ -9,3 +9,8 @@ def write_status(s): pass
 def read_status(): return None
 
 def listener_state(s): return 'stopped'
+
+class AlarmTracker:
+    def __init__(self, consecutive=3, cooldown_sec=5):
+        self.consecutive = consecutive
+        self.cooldown_sec = cooldown_sec
