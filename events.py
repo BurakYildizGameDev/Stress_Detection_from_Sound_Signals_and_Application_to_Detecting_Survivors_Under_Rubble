@@ -14,3 +14,5 @@ class AlarmTracker:
     def __init__(self, consecutive=3, cooldown_sec=5):
         self.consecutive = consecutive
         self.cooldown_sec = cooldown_sec
+
+    def update(self, result, now): return []
