@@ -16,3 +16,5 @@ class AlarmTracker:
         self.cooldown_sec = cooldown_sec
 
     def update(self, result, now): return []
+
+# episode_end event
