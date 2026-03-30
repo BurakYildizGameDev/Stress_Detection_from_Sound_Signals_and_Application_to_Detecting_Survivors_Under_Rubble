@@ -7,3 +7,6 @@ def test_tracker():
 
 def test_cooldown():
     pass
+
+def test_archive():
+    pass
