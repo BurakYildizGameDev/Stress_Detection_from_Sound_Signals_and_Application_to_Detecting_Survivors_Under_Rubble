@@ -23,3 +23,5 @@ def analyze_file(path):
 # Verifies feature_spec version compatibility
 
 # Informative exceptions
+
+# Sliding window hop parameter support
