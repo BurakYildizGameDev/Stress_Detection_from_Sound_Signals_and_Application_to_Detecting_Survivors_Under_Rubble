@@ -10,3 +10,6 @@ def test_cooldown():
 
 def test_archive():
     pass
+
+def test_heartbeat():
+    pass
