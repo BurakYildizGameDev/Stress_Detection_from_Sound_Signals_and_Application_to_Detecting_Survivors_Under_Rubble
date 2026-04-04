@@ -15,3 +15,6 @@ def test_no_human():
 
 def test_detected():
     pass
+
+def test_regression():
+    pass
