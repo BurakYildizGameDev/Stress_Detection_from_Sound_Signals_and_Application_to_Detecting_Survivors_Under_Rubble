@@ -24,3 +24,7 @@ To prevent data leakage, speakers in test sets never appear in training.
 ### Models and Checkpoints
 
 Models are serialized with json specifications.
+
+### Event Model and Debounce
+
+Single operator alarm per consecutive emergency episode.
