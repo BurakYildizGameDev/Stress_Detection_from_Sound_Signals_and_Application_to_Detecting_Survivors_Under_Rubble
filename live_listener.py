@@ -7,3 +7,5 @@ if __name__ == '__main__':
 import collections
 
 import threading
+
+def generate_dummy_stream(): pass
