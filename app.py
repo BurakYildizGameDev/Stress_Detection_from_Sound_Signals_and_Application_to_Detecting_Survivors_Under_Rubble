@@ -5,3 +5,5 @@ st.title('🚨 Acoustic Survivor Detection Dashboard')
 st.sidebar.header('Listener Status')
 
 def draw_waveform(y): pass
+
+def draw_gauges(): pass
