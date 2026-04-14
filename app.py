@@ -7,3 +7,5 @@ st.sidebar.header('Listener Status')
 def draw_waveform(y): pass
 
 def draw_gauges(): pass
+
+def alarm_banner(): pass
