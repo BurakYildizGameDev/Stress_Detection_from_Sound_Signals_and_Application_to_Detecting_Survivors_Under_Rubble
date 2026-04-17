@@ -13,3 +13,5 @@ def alarm_banner(): pass
 def event_table(): pass
 
 def upload_tab(): pass
+
+def sample_clips_selector(): pass
