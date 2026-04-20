@@ -33,3 +33,7 @@ Single operator alarm per consecutive emergency episode.
 flowchart TD
     A[Microphone] --> B{RMS < 0.01?}
 ```
+
+## Usage
+
+How to run dashboard and tests.
