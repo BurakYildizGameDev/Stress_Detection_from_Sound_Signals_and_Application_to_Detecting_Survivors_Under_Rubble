@@ -28,3 +28,8 @@ Models are serialized with json specifications.
 ### Event Model and Debounce
 
 Single operator alarm per consecutive emergency episode.
+
+```mermaid
+flowchart TD
+    A[Microphone] --> B{RMS < 0.01?}
+```
