@@ -40,3 +40,5 @@ How to run dashboard and tests.
 
 - samples/woman_scream.mp3
 - samples/people_talk.mp3
+
+> All 47 pytest test cases passing.
