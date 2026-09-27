@@ -2,7 +2,8 @@
 
 > **Durum: prototip, donanımda test edilmedi.** Karar mantığı, alarm takibi ve
 > modeller bilgisayarda derlenip Python ile birebir karşılaştırılarak test edildi.
-> Mikrofon ve FreeRTOS kısmı (`src/main.cpp`) hiç çalıştırılmadı. Öznitelik
+> Mikrofon ve FreeRTOS kısmı (`src/main.cpp`) yalnızca CI'da derleniyor
+> (`.github/workflows/ci.yml`), hiç çalıştırılmadı. Öznitelik
 > çıkarımı henüz yok: firmware konuşma içeren pencereleri `unclassified` diye
 > raporlar, modelleri çağırmaz (bkz. [Eksikler](#eksikler)).
 

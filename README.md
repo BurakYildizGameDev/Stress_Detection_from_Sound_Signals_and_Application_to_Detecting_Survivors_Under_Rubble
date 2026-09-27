@@ -16,6 +16,7 @@ that lasts long enough raises a single operator alarm on a live dashboard.
 ![librosa](https://img.shields.io/badge/librosa-0.11-purple)
 ![Streamlit](https://img.shields.io/badge/dashboard-Streamlit-red)
 ![License](https://img.shields.io/badge/license-MIT-green)
+[![CI](https://github.com/BurakYildizGameDev/Stress_Detection_from_Sound_Signals_and_Application_to_Detecting_Survivors_Under_Rubble/actions/workflows/ci.yml/badge.svg)](https://github.com/BurakYildizGameDev/Stress_Detection_from_Sound_Signals_and_Application_to_Detecting_Survivors_Under_Rubble/actions/workflows/ci.yml)
 
 ---
 
@@ -29,6 +30,7 @@ that lasts long enough raises a single operator alarm on a live dashboard.
 - [Data](#data)
 - [Training](#training)
 - [Evaluation](#evaluation)
+- [Embedded prototype (ESP32-S3)](#embedded-prototype-esp32-s3)
 - [Known limitations](#known-limitations)
 - [Roadmap](#roadmap)
 - [License](#license)
@@ -135,7 +137,12 @@ the code.
 │   ├── extract_features.py  # 3. → features/{emergency,human}.npz
 │   ├── train.py             # 4. → models/*.pkl + models/*.json
 │   ├── evaluate.py          # 5. → reports/*.json
-│   └── prepare_training.py  # runs 1–3 (and 4–5 with --train) in one go
+│   ├── prepare_training.py  # runs 1–3 (and 4–5 with --train) in one go
+│   ├── train_esp.py         # small models that fit ESP32-S3 flash → models/*_esp.pkl
+│   ├── export_c_model.py    # Random Forest → dependency-free C header
+│   └── esp_serial_bridge.py # ESP32 serial output → dashboard log files
+│
+├── firmware/                # ESP32-S3 + INMP441 prototype (PlatformIO), see firmware/README.md
 │
 ├── docs/EVALUATION.md       # evaluation protocols and field-test plan
 ├── models/                  # trained models (Git LFS) + metadata
@@ -208,6 +215,10 @@ result = analyze_file("recording.wav")
 ```bash
 python -m pytest tests
 ```
+
+Tests that compile C (model exporter, firmware core) need `gcc`/`clang` or a `CC`
+variable and are skipped otherwise. On Windows: `pip install ziglang` and
+`CC="python -m ziglang cc"`. CI runs everything on Ubuntu and builds the firmware.
 
 ---
 
@@ -438,6 +449,39 @@ What this shows:
 
 ---
 
+## Embedded prototype (ESP32-S3)
+
+> **Prototype, not tested on hardware.** CI compiles the firmware on every push
+> and its decision and alarm logic is tested against the Python code, but it has
+> never run on a board. On-device feature extraction is not written yet, so the
+> firmware cannot classify audio yet.
+
+The goal is a microphone left in the debris that classifies audio on the device
+and only sends events. Details: [firmware/README.md](firmware/README.md).
+
+| Part | State |
+|---|---|
+| C export of the Random Forests (`scripts/export_c_model.py`) | Compiled C matches `predict_proba` (max difference < 2e-7 on 18k test rows); two models can be linked together |
+| Small models (`scripts/train_esp.py`) | v2 models are 0.9M / 2.3M nodes (tens of MB of code). ESP models: 10 trees, depth 12, **230 KB + 421 KB** (flash measured by compiling for a 32-bit ARM target, not Xtensa) |
+| Decision + alarm logic (`firmware/lib/rubble_core`, C99) | Tested against `pipeline_v2` and `events.AlarmTracker` on the host |
+| Firmware (`firmware/src/main.cpp`) | I2S capture, FreeRTOS tasks, JSON over serial. Only compiled (CI), never run on a board |
+| Dashboard link (`scripts/esp_serial_bridge.py`) | Writes device events to the dashboard logs; `--replay` works without hardware |
+| On-device features (MFCC, HNR, …) | **Not written.** Must match librosa exactly |
+
+Accuracy of the small models vs. full v2 (`reports/esp_model_sweep.json`):
+
+| | Full v2 | ESP |
+|---|---|---|
+| Human detector, balanced accuracy / false alarms | 0.845 / 0.185 | 0.836 / 0.134 |
+| Human detector, real non-verbal vocalisations (VIVAE) recall | **0.70** | **0.50** |
+| Emergency, macro-F1 clean / severe rubble | 0.80 / 0.45 | 0.77 / 0.50 |
+| Emergency, false alarms on normal speech | 0.23 | 0.14 |
+
+The v2 cost weights (whisper ×8, moan ×6) made the small emergency models flag
+59–93% of normal speech, so the ESP models are trained without class weights.
+
+---
+
 ## Known limitations
 
 These are stated openly on purpose:
@@ -459,6 +503,9 @@ These are stated openly on purpose:
 7. **No rubble acoustics.** The robustness protocol only simulates noise,
    attenuation and low-pass filtering; nothing has been recorded through real
    debris.
+8. **The ESP32 firmware is untested and incomplete.** It has never run on a
+   board, cannot yet compute features on the device, and its small models catch
+   fewer real non-verbal vocalisations (0.50 vs 0.70).
 
 ---
 
@@ -481,8 +528,10 @@ These are stated openly on purpose:
 - [ ] Pretrained audio embeddings (YAMNet / PANNs) as features
 - [ ] Room-impulse-response augmentation to simulate debris
 - [ ] Field tests from [docs/EVALUATION.md](docs/EVALUATION.md)
-- [ ] ONNX export for edge devices
-- [ ] GitHub Actions CI
+- [x] ESP32-S3 prototype: small models, C export, host-tested decision/alarm core, serial bridge
+- [x] GitHub Actions CI (tests + firmware build)
+- [ ] On-device feature extraction matching librosa (ESP32)
+- [ ] Run the firmware on real hardware; LoRa/ESP-NOW instead of USB serial
 
 ---
 

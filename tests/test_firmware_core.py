@@ -94,7 +94,9 @@ def harness(tmp_path_factory):
     src.write_text(HARNESS, encoding="utf-8")
     exe = tmp / ("harness.exe" if os.name == "nt" else "harness")
     sources = [os.path.join(CORE_DIR, f) for f in sorted(os.listdir(CORE_DIR)) if f.endswith(".c")]
-    subprocess.run(CC + ["-std=c99", "-O1", "-Wall", "-Wextra", "-Werror", "-I", CORE_DIR,
+    # -Wno-unused-result: glibc'de scanf dönüşü kullanılmazsa uyarı verir (yalnızca test düzeneği)
+    subprocess.run(CC + ["-std=c99", "-O1", "-Wall", "-Wextra", "-Werror", "-Wno-unused-result",
+                         "-I", CORE_DIR,
                          "-o", str(exe), str(src)] + sources + ["-lm"],
                    check=True, capture_output=True, text=True)
 
