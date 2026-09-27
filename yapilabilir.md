@@ -48,14 +48,27 @@ Durum (2026-09-28):
 
 ## 4. Gömülü sistem (ESP32-S3)
 
-| # | İş | Not |
+Donanımda test edilmeyecek; amaç derlenebilen, testli ve dürüstçe belgelenmiş
+bir prototip. İş fazlara bölündü:
+
+| Faz | İş | Durum |
 |---|---|---|
-| 4.1 | C dışa aktarıcıdaki eşik hassasiyeti | `export_c_model.py` eşikleri `%.6f` ile yazıyor; küçük ölçekli özniteliklerde bölme yönü değişebilir. `%.9g` kullanılmalı |
-| 4.2 | C kodunu gerçekten derleyen test | Mevcut "birebir eşleşme" testi C'yi derlemiyor, sklearn'ü kendisiyle karşılaştırıyor |
-| 4.3 | Model boyutu | 350 ağaç × derinlik 22 flash'a sığmayabilir. Küçük model ile doğruluk kaybını ölçmek gerekiyor |
-| 4.4 | Öznitelik çıkarımının C'ye taşınması | Asıl zorluk ağaçlar değil, MFCC/HNR hesabının librosa ile birebir eşleşmesi |
-| 4.5 | 1.1 seçilirse | Embedding modelleri ESP32 için ağır. Küçültülmüş (quantized) sürüm veya hesabı operatör bilgisayarında yapmak gerekebilir |
-| 4.6 | Donanım | INMP441'in öz gürültüsü fısıltı için yüksek olabilir. Vurma sesi için jeofon/piezo kontak sensör kanalı eklenebilir |
+| ESP-1 | **C dışa aktarıcı**: CLI, model adına göre önekler (iki model aynı projede), eşiklerin float32'ye kayıpsız yazılması, sınıf sırası kontrolü, karar eşiği ve örnekleme hızının `.h`'ye yazılması, C'yi gerçekten derleyip sklearn ile karşılaştıran test | Bitti |
+| ESP-2 | **Küçük model**: ESP için az ağaçlı, sığ bir model eğitmek ve doğruluk kaybını raporlamak. v2 modelleri 940 bin / 2,3 milyon düğüm (insan modeli 139 MB C kodu), flash'a sığmıyor | |
+| ESP-3 | **Firmware iskeleti** (`firmware/`, PlatformIO): INMP441 I2S okuma, halka tampon, kayıt ve çıkarım görevleri, iki aşamalı karar, `events.py` mantığı, seri porttan JSON alarm | |
+| ESP-4 | **C'de öznitelik çıkarımı**: librosa ile birebir MFCC (reflect padding, Slaney mel, `top_db=80`, ortho DCT), düzlük, HNR (sadece 44–441 gecikmeleri, tam korelasyon ESP'de saniyeler sürer), altın vektör testleri. İki örnekleme hızı (22.05 / 16 kHz) sorunu | |
+| ESP-5 | **CI ve belgeler**: GitHub Actions (`pytest` + `pio run`), README'de "prototip, donanımda test edilmedi" bölümü, bağlantı tablosu, malzeme listesi | |
+
+Açık notlar:
+
+- 1.1 seçilirse embedding modelleri ESP32 için ağır; küçültülmüş (quantized)
+  sürüm ya da hesabı operatör bilgisayarında yapmak gerekebilir.
+- INMP441'in öz gürültüsü fısıltı için yüksek olabilir. Vurma sesi için
+  jeofon/piezo kontak sensör kanalı eklenebilir.
+- Sessizlik kapısı (`RMS_SILENCE_THRESHOLD`) mutlak seviyeye bağlı; mikrofon
+  ölçeklemesi ve kalibrasyonu tanımlanmalı.
+- C testleri derleyici yoksa atlanır. Windows'ta: `pip install ziglang` ve
+  `CC="python -m ziglang cc"`.
 
 ---
 
