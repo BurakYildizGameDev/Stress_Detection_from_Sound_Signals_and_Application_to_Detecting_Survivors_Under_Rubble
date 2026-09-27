@@ -13,28 +13,28 @@
     "desc": "RMS-normalized: 13 MFCC mean + 13 MFCC std + ZCR + Flatness(mean/std) + Rolloff + Flux + HNR + SubBandRatio"
   },
   "sklearn_version": "1.8.0",
-  "created": "2026-09-27T20:34:32+00:00",
-  "manifest_sha256": "bc27f8a054e65267dde3ef9db245dc181fdca0b4b6a91d2a6c9b038b0ab3eeb9",
+  "created": "2026-09-27T21:09:31+00:00",
+  "manifest_sha256": "121a370d0b2100d117eaba0944aa098451d60a3f760a8f14d07cbc536118702c",
   "class_weight": "balanced",
-  "n_train_rows": 16273,
+  "n_train_rows": 25953,
   "eval_protocol": "held-out speakers; synthetic whisper/moan from test speakers; fixed rubble conditions; eval_only datasets as external real data",
   "metrics_clean": {
-    "n": 1314,
-    "accuracy": 0.9786910197869102,
-    "macro_f1": 0.9727385892116183,
-    "false_alarm_rate": 0.045454545454545456,
-    "miss_rate": 0.012474012474012475,
+    "n": 1840,
+    "accuracy": 0.9119565217391304,
+    "macro_f1": 0.847169497886583,
+    "false_alarm_rate": 0.3181818181818182,
+    "miss_rate": 0.033602150537634407,
     "per_class": {
       "human": {
-        "precision": 0.9834368530020704,
-        "recall": 0.9875259875259875,
-        "f1": 0.9854771784232366,
-        "support": 962
+        "precision": 0.927741935483871,
+        "recall": 0.9663978494623656,
+        "f1": 0.9466754443712969,
+        "support": 1488
       },
       "non_human": {
-        "precision": 0.9655172413793104,
-        "recall": 0.9545454545454546,
-        "f1": 0.96,
+        "precision": 0.8275862068965517,
+        "recall": 0.6818181818181818,
+        "f1": 0.7476635514018691,
         "support": 352
       }
     },
@@ -44,12 +44,12 @@
     ],
     "confusion_matrix": [
       [
-        950,
-        12
+        1438,
+        50
       ],
       [
-        16,
-        336
+        112,
+        240
       ]
     ]
   },
