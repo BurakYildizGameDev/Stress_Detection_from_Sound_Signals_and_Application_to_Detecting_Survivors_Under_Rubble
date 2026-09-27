@@ -1,8 +1,12 @@
 """
 features_v2.py - İnleme, Fısıltı ve Zayıf Vokal İmzaları Destekleyen Genişletilmiş Öznitelik Çıkarıcı.
 
-Bu modül Aşama 1 için 34 boyutlu (28 klasik + 6 fısıltı/inleme göstergesi) ve
-Aşama 2 için 20 boyutlu (15 klasik + 5 gelişmiş spektral gösterge) öznitelik vektörleri üretir.
+Bu modül Aşama 1 için 33 boyutlu ve Aşama 2 için 19 boyutlu öznitelik vektörleri üretir.
+
+Ses şiddetinden bağımsızlık: sinyal öznitelik çıkarımından önce sabit RMS'e
+ölçeklenir ve RMS vektöre konmaz. Aksi hâlde model "sessizse fısıltıdır" gibi
+bir kısayol öğrenir; enkaz arkasında her ses zaten sessizdir. Ham RMS yalnızca
+canlı hattaki sessizlik kapısında (pipeline_v2) kullanılır.
 
 V2 İyileştirmeleri:
 1. Harmonik-Gürültü Oranı (HNR): İnleme seslerindeki zayıf glottal titreşimi yakalar.
@@ -15,23 +19,26 @@ import librosa
 
 from features import HUMAN_SR, EMERGENCY_SR, N_MFCC, _resample
 
-HUMAN_N_FEATURES_V2 = 34
-EMERGENCY_N_FEATURES_V2 = 20
+HUMAN_N_FEATURES_V2 = 33
+EMERGENCY_N_FEATURES_V2 = 19
+TARGET_RMS = 0.05
 
 FEATURE_SPECS_V2 = {
     "human": {
-        "version": 2,
+        "version": 3,
         "sr": HUMAN_SR,
         "n_features": HUMAN_N_FEATURES_V2,
         "clip_sec": 2.0,
-        "desc": "13 MFCC mean + 13 MFCC std + ZCR + RMS + Flatness(mean/std) + Rolloff + Flux + HNR + SubBandRatio"
+        "loudness_normalized": True,
+        "desc": "RMS-normalized: 13 MFCC mean + 13 MFCC std + ZCR + Flatness(mean/std) + Rolloff + Flux + HNR + SubBandRatio"
     },
     "emergency": {
-        "version": 2,
+        "version": 3,
         "sr": EMERGENCY_SR,
         "n_features": EMERGENCY_N_FEATURES_V2,
         "clip_sec": None,
-        "desc": "13 MFCC mean + RMS + Centroid + HNR + Flatness + SubBandRatio + Entropy + Flux"
+        "loudness_normalized": True,
+        "desc": "RMS-normalized: 13 MFCC mean + Centroid + HNR + Flatness + SubBandRatio + Entropy + Flux"
     }
 }
 
@@ -72,28 +79,35 @@ def extract_hnr_robust(y, sr):
     return float(np.clip(hnr_db, -20.0, 40.0))
 
 
+def normalize_loudness(y, target_rms=TARGET_RMS):
+    """Sinyali sabit RMS'e ölçekler (tamamen sessiz sinyal olduğu gibi kalır)."""
+    rms = float(np.sqrt(np.mean(y ** 2))) if len(y) else 0.0
+    if rms < 1e-8:
+        return y
+    return (y * (target_rms / rms)).astype(np.float32)
+
+
 def human_features_v2(y, sr=HUMAN_SR):
     """
-    İnleme ve fısıltı tespitine duyarlı 34 boyutlu insan varlık öznitelik vektörü:
+    İnleme ve fısıltı tespitine duyarlı 33 boyutlu insan varlık öznitelik vektörü
+    (sinyal önce TARGET_RMS'e ölçeklenir):
     - 0..12:   13 MFCC ortalama
     - 13..25:  13 MFCC standart sapma
     - 26:      1 ZCR ortalama
-    - 27:      1 RMS enerji
-    - 28:      1 Spektral Düzlük (Spectral Flatness) ortalama [Fısıltı göstergesi]
-    - 29:      1 Spektral Düzlük standart sapma
-    - 30:      1 Spektral Düşüş (Spectral Rolloff %85) / sr
-    - 31:      1 Spektral Akı (Spectral Flux) ortalama
-    - 32:      1 HNR / 40.0 (Normalize Harmonik Oran) [İnleme göstergesi]
-    - 33:      1 0-500 Hz Alt-Bant Enerji Oranı (Sub-Band Energy Ratio) [İnleme göstergesi]
+    - 27:      1 Spektral Düzlük (Spectral Flatness) ortalama [Fısıltı göstergesi]
+    - 28:      1 Spektral Düzlük standart sapma
+    - 29:      1 Spektral Düşüş (Spectral Rolloff %85) / sr
+    - 30:      1 Spektral Akı (Spectral Flux) ortalama
+    - 31:      1 HNR / 40.0 (Normalize Harmonik Oran) [İnleme göstergesi]
+    - 32:      1 0-500 Hz Alt-Bant Enerji Oranı (Sub-Band Energy Ratio) [İnleme göstergesi]
     """
-    y = _resample(y, sr, HUMAN_SR)
+    y = normalize_loudness(_resample(y, sr, HUMAN_SR))
 
     # 1. Klasik 28 Öznitelik
     mfcc = librosa.feature.mfcc(y=y, sr=HUMAN_SR, n_mfcc=N_MFCC)
     mfcc_mean = np.mean(mfcc, axis=1)
     mfcc_std = np.std(mfcc, axis=1)
     zcr = np.mean(librosa.feature.zero_crossing_rate(y))
-    rms = np.mean(librosa.feature.rms(y=y))
 
     # 2. Spektral Düzlük (Fısıltıda 0.40 - 0.70 aralığına fırlar)
     flatness = librosa.feature.spectral_flatness(y=y)[0]
@@ -128,7 +142,6 @@ def human_features_v2(y, sr=HUMAN_SR):
         mfcc_mean,
         mfcc_std,
         np.float32(zcr),
-        np.float32(rms),
         np.float32(flatness_mean),
         np.float32(flatness_std),
         np.float32(rolloff),
@@ -143,21 +156,20 @@ def human_features_v2(y, sr=HUMAN_SR):
 
 def emergency_features_v2(y, sr=EMERGENCY_SR):
     """
-    Acil durum ve travma sınıflandırması için 20 boyutlu vektör:
+    Acil durum ve travma sınıflandırması için 19 boyutlu vektör
+    (sinyal önce TARGET_RMS'e ölçeklenir):
     - 0..12:   13 MFCC ortalama
-    - 13:      1 RMS enerji
-    - 14:      1 Spectral Centroid / (sr / 2) [Normalize Kütle Merkezi]
-    - 15:      1 HNR / 40.0 [İnleme ayrımı]
-    - 16:      1 Spectral Flatness [Fısıltı ayrımı]
-    - 17:      1 0-500 Hz Alt-Bant Enerji Oranı [İnleme ayrımı]
-    - 18:      1 Spectral Entropy [Kaos ve gürültü ayrımı]
-    - 19:      1 Spectral Flux [Zaman-frekans akısı]
+    - 13:      1 Spectral Centroid / (sr / 2) [Normalize Kütle Merkezi]
+    - 14:      1 HNR / 40.0 [İnleme ayrımı]
+    - 15:      1 Spectral Flatness [Fısıltı ayrımı]
+    - 16:      1 0-500 Hz Alt-Bant Enerji Oranı [İnleme ayrımı]
+    - 17:      1 Spectral Entropy [Kaos ve gürültü ayrımı]
+    - 18:      1 Spectral Flux [Zaman-frekans akısı]
     """
-    y = _resample(y, sr, EMERGENCY_SR)
+    y = normalize_loudness(_resample(y, sr, EMERGENCY_SR))
 
-    # 1. 13 MFCC ve RMS
+    # 1. 13 MFCC
     mfcc_mean = np.mean(librosa.feature.mfcc(y=y, sr=EMERGENCY_SR, n_mfcc=N_MFCC), axis=1)
-    rms = float(np.mean(librosa.feature.rms(y=y)))
 
     # 2. Spektral Ağırlık Merkezi (Centroid)
     centroid = float(np.mean(librosa.feature.spectral_centroid(y=y, sr=EMERGENCY_SR))) / (EMERGENCY_SR / 2.0)
@@ -192,7 +204,6 @@ def emergency_features_v2(y, sr=EMERGENCY_SR):
 
     feats = np.hstack([
         mfcc_mean,
-        np.float32(rms),
         np.float32(centroid),
         np.float32(hnr_val),
         np.float32(flatness),

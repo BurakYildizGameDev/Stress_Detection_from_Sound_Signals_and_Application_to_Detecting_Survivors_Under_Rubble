@@ -13,7 +13,7 @@ import librosa
 from scipy.signal import lfilter, butter, sosfilt
 
 
-def convert_to_whisper_dsp(y, sr=16000, lpc_order=16, whisper_gain=0.15):
+def convert_to_whisper_dsp(y, sr=16000, lpc_order=16, whisper_gain=0.15, rng=None):
     """
     Normal ses kaydını LPC analizi ve aperiyodik beyaz gürültü uyarımıyla
     fısıltı (whisper) sesine dönüştürür.
@@ -23,11 +23,14 @@ def convert_to_whisper_dsp(y, sr=16000, lpc_order=16, whisper_gain=0.15):
         sr (int): Örnekleme frekansı
         lpc_order (int): LPC kutup sayısı (16 kHz için genelde 16 idealdir)
         whisper_gain (float): Fısıltı ses şiddet çarpanı
+        rng (np.random.Generator): Gürültü kaynağı; verilmezse her çağrı farklıdır
     Dönüş:
         np.ndarray: Fısıltı ses sinyali (float32)
     """
     if len(y) == 0:
         return y.copy().astype(np.float32)
+    if rng is None:
+        rng = np.random.default_rng()
 
     # 1. Pre-emphasis filtresi: Yüksek frekansları parlat
     pre_emphasis = 0.97
@@ -38,7 +41,7 @@ def convert_to_whisper_dsp(y, sr=16000, lpc_order=16, whisper_gain=0.15):
 
     if len(y_pre) < frame_length:
         # Ses çok kısaysa doğrudan şekillendirilmiş gürültü dön
-        noise = np.random.normal(0, 0.05, len(y)).astype(np.float32)
+        noise = rng.normal(0, 0.05, len(y)).astype(np.float32)
         return (noise * whisper_gain).astype(np.float32)
 
     frames = librosa.util.frame(y_pre, frame_length=frame_length, hop_length=hop_length)
@@ -62,7 +65,7 @@ def convert_to_whisper_dsp(y, sr=16000, lpc_order=16, whisper_gain=0.15):
             continue
 
         # Glottal periyodik atım yerine aperiyodik Gauss gürültüsü
-        noise_source = np.random.normal(0, 1.0, frame_length).astype(np.float32)
+        noise_source = rng.normal(0, 1.0, frame_length).astype(np.float32)
         try:
             raw_filtered = lfilter([1.0], a, noise_source)
             raw_filtered = np.clip(raw_filtered, -50.0, 50.0)
@@ -92,12 +95,16 @@ def convert_to_whisper_dsp(y, sr=16000, lpc_order=16, whisper_gain=0.15):
     return np.nan_to_num(whisper_out, nan=0.0).astype(np.float32)
 
 
-def convert_to_moan_dsp(y, sr=16000, pitch_steps=-6, moan_gain=0.35):
+def convert_to_moan_dsp(y, sr=16000, pitch_steps=-6, moan_gain=0.35,
+                        cutoff_hz=450.0, tremolo_hz=3.5):
     """
     Normal ses kaydını derin inleme (moaning) akustik profiline dönüştürür:
     - Pitch shift: Ses frekansını 70-130 Hz bandına doğru kaydırır.
-    - Low-pass filtre: 450 Hz üzerini söndürür (kapalı dudak/ağız rezonansı).
-    - Titreşim dengesizliği (jitter simülasyonu): Halsiz ses telleri.
+    - Low-pass filtre: cutoff_hz üzerini söndürür (kapalı dudak/ağız rezonansı).
+    - Tremolo: tremolo_hz hızında genlik dalgalanması (halsiz, düzensiz nefes).
+
+    Sabit parametreler sınıflandırıcıya tek bir "dönüştürücü imzası" öğretir;
+    eğitimde random_moan_params() ile rastgeleleştirin.
     """
     if len(y) == 0:
         return y.copy().astype(np.float32)
@@ -109,12 +116,31 @@ def convert_to_moan_dsp(y, sr=16000, pitch_steps=-6, moan_gain=0.35):
         y_low = y.copy()
 
     # 2. 450 Hz Alçak Geçiren Filtre (Butterworth 4. Derece)
-    sos = butter(4, 450, btype="low", fs=sr, output="sos")
+    sos = butter(4, cutoff_hz, btype="low", fs=sr, output="sos")
     y_filtered = sosfilt(sos, y_low).astype(np.float32)
 
     # 3. Nefes düzensizliği / Tremolo modülasyonu (3-5 Hz yavaş inleme ritmi)
     t = np.arange(len(y)) / sr
-    modulator = 0.75 + 0.25 * np.sin(2 * np.pi * 3.5 * t).astype(np.float32)
+    modulator = 0.75 + 0.25 * np.sin(2 * np.pi * tremolo_hz * t).astype(np.float32)
     y_moan = y_filtered * modulator * moan_gain
 
     return np.nan_to_num(y_moan, nan=0.0).astype(np.float32)
+
+
+def random_moan_params(rng):
+    """convert_to_moan_dsp için rastgele parametreler (veri artırma)."""
+    return {
+        "pitch_steps": int(rng.integers(-9, -3)),
+        "moan_gain": float(rng.uniform(0.1, 0.6)),
+        "cutoff_hz": float(rng.uniform(350.0, 800.0)),
+        "tremolo_hz": float(rng.uniform(2.0, 6.0)),
+    }
+
+
+def random_whisper_params(rng):
+    """convert_to_whisper_dsp için rastgele parametreler (veri artırma)."""
+    return {
+        "lpc_order": int(rng.integers(12, 21)),
+        "whisper_gain": float(rng.uniform(0.05, 0.4)),
+        "rng": rng,
+    }

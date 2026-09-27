@@ -51,9 +51,9 @@ def test_convert_to_moan_dsp_output_properties():
     # İnlemede 0-500 Hz enerji oranı çok yüksek olmalıdır
     f_orig = emergency_features_v2(y, sr)
     f_moan = emergency_features_v2(m, sr)
-    # Index 17: low_ratio
-    assert f_moan[17] > f_orig[17]
-    assert f_moan[17] > 0.70
+    # Index 16: low_ratio
+    assert f_moan[16] > f_orig[16]
+    assert f_moan[16] > 0.70
 
 
 def test_converters_empty_or_silence():
@@ -66,3 +66,11 @@ def test_converters_empty_or_silence():
     m_zero = convert_to_moan_dsp(y_zero)
     assert np.all(np.isfinite(w_zero))
     assert np.all(np.isfinite(m_zero))
+
+
+def test_converters_are_deterministic_with_rng():
+    sr = 16000
+    y = speech_like_signal(sr=sr, sec=1.0)
+    a = convert_to_whisper_dsp(y, sr=sr, rng=np.random.default_rng(7))
+    b = convert_to_whisper_dsp(y, sr=sr, rng=np.random.default_rng(7))
+    np.testing.assert_array_equal(a, b)

@@ -27,7 +27,7 @@ from joblib import Parallel, delayed
 from tqdm import tqdm
 
 from augment import AUGMENTATIONS
-from dataset import (FEATURES_DIR, MANIFEST_PATH, ROOT, SPLIT_SEED,
+from dataset import (EVAL_ONLY_DATASETS, FEATURES_DIR, MANIFEST_PATH, ROOT, SPLIT_SEED,
                      file_sha256, read_manifest)
 from features import FEATURE_FUNCS, FEATURE_SPECS
 
@@ -39,7 +39,9 @@ def features_path(task):
 
 
 def select_rows(task, records, max_per_dataset, seed=SPLIT_SEED):
-    """Göreve giren kayıtlar ve etiketleri."""
+    """Göreve giren kayıtlar ve etiketleri. v1 yalnızca dış doğrulama veri
+    setlerini (EVAL_ONLY_DATASETS) kullanmaz."""
+    records = [r for r in records if r.dataset not in EVAL_ONLY_DATASETS]
     if task == "emergency":
         return [(r, r.emergency_class) for r in records if r.emergency_class]
 

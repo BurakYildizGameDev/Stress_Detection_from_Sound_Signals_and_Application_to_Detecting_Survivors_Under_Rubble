@@ -43,9 +43,11 @@ EMERGENCY_CLASSES_V2 = ("normal", "stress", "panic", "moan", "whisper")
 EMOTION_TO_CLASS_V2 = {
     **EMOTION_TO_CLASS,
     "moan": "moan",
-    "groan": "moan",
-    "pain": "moan",
     "whisper": "whisper",
+    # VIVAE: yalnızca düşük/orta şiddetli ağrı vokalizasyonu inlemeye karşılık
+    # gelir; güçlü/zirve ağrı çığlığa dönüşür ve hiçbir sınıfa atanmaz.
+    "pain_low": "moan",
+    "pain_moderate": "moan",
 }
 
 # ESC-50 içindeki insan kaynaklı sesli sınıflar "non_human" diye etiketlenemez.
@@ -131,12 +133,37 @@ def _esc50(name, _):
     return f"clip{m.group(2)}", f"esc{target}", name[:-4]
 
 
+def _vivae(name, _):
+    # S04_pain_moderate_10.wav: konuşmacı_duygu_şiddet_öğe. Ağrı için şiddet
+    # etikete katılır (pain_low ... pain_peak), diğer duygular şiddetsiz.
+    m = re.fullmatch(r"(S\d\d)_([a-z]+)_(low|moderate|strong|peak)_(\d+)\.wav", name)
+    if not m:
+        raise Skip("VIVAE şemasına uymuyor")
+    speaker, emotion, intensity = m.group(1), m.group(2), m.group(3)
+    if emotion == "pain":
+        emotion = f"pain_{intensity}"
+    return speaker, emotion, name[:-4]
+
+
+def _field(name, path):
+    # Elle eklenen gerçek kayıtlar: field/<etiket>/<konuşmacı>/<dosya>.wav
+    # (ör. CHAINS / wTIMIT fısıltıları veya gönüllülerden alınan kayıtlar).
+    parts = os.path.normpath(path).split(os.sep)
+    label, speaker = parts[-3], parts[-2]
+    if label not in EMERGENCY_CLASSES_V2:
+        raise Skip(f"field/ altında bilinmeyen etiket klasörü ({label})")
+    return speaker, label, f"{label}/{speaker}/{name[:-4]}"
+
+
 @dataclass(frozen=True)
 class DatasetSpec:
     dir: str        # DATA_DIR'e göre
     role: str       # "human" | "non_human"
     license: str
     parse: object   # (dosya_adı, yol) -> (konuşmacı, duygu, kayıt_kimliği)
+    # True: bütün kayıtlar test bölmesine düşer; eğitimde hiç kullanılmaz.
+    # Gerçek fısıltı/inleme verisi az olduğu için yalnızca dış doğrulama içindir.
+    eval_only: bool = False
 
 
 DATASETS = {
@@ -147,7 +174,11 @@ DATASETS = {
     "savee":     DatasetSpec("human/savee",     "human",     "research only",             _savee),
     "jl_corpus": DatasetSpec("human/jl_corpus", "human",     "CC0",                       _jl_corpus),
     "esc50":     DatasetSpec("non-human/esc50", "non_human", "CC BY-NC 3.0",              _esc50),
+    "vivae":     DatasetSpec("human/vivae",     "human",     "CC BY-NC 4.0",              _vivae, eval_only=True),
+    "field":     DatasetSpec("human/field",     "human",     "kayda göre değişir",        _field, eval_only=True),
 }
+
+EVAL_ONLY_DATASETS = {k for k, v in DATASETS.items() if v.eval_only}
 
 
 def dataset_dir(name):
@@ -169,6 +200,7 @@ class Record:
     emergency_class: str    # EMERGENCY_CLASSES'tan biri veya ""
     split: str = ""         # train | test
     transform: str = "original"
+    emergency_class_v2: str = ""   # EMERGENCY_CLASSES_V2'den biri veya ""
 
     @property
     def group(self):
@@ -206,7 +238,10 @@ def scan_dataset(name):
                 speaker=speaker,
                 recording_id=rec_id,
                 emotion=emotion,
-                emergency_class=EMOTION_TO_CLASS.get(emotion, "") if spec.role == "human" else "",
+                # v1 modelleri eval_only veri setlerini hiç görmez
+                emergency_class=EMOTION_TO_CLASS.get(emotion, "")
+                if spec.role == "human" and not spec.eval_only else "",
+                emergency_class_v2=EMOTION_TO_CLASS_V2.get(emotion, "") if spec.role == "human" else "",
             ))
     return records, skipped
 
@@ -214,14 +249,15 @@ def scan_dataset(name):
 def assign_splits(records, test_fraction=TEST_SPEAKER_FRACTION, seed=SPLIT_SEED):
     """Konuşmacı bazlı bölme: bir konuşmacının bütün kayıtları aynı tarafa düşer.
     Her veri setinden konuşmacıların ~%20'si teste ayrılır (en az 1, en az 1 de
-    eğitimde kalır). ESC-50 kendi resmi 5. fold'unu test olarak kullanır."""
+    eğitimde kalır). ESC-50 kendi resmi 5. fold'unu test olarak kullanır.
+    eval_only veri setlerinin tamamı teste düşer."""
     by_dataset = {}
     for r in records:
         by_dataset.setdefault(r.dataset, set()).add(r.speaker)
 
     test_groups = set()
     for ds, speakers in sorted(by_dataset.items()):
-        if ds == "esc50":
+        if ds == "esc50" or ds in EVAL_ONLY_DATASETS:
             continue
         speakers = sorted(speakers)
         if len(speakers) < 2:
@@ -233,6 +269,8 @@ def assign_splits(records, test_fraction=TEST_SPEAKER_FRACTION, seed=SPLIT_SEED)
     for r in records:
         if r.dataset == "esc50":
             r.split = "test" if r.path.rsplit("/", 1)[-1].startswith("5-") else "train"
+        elif r.dataset in EVAL_ONLY_DATASETS:
+            r.split = "test"
         else:
             r.split = "test" if r.group in test_groups else "train"
     return records

@@ -4,13 +4,16 @@ rubble_acoustics.py - Gerçek Enkaz Akustiği, RIR Konvolüsyonu ve Fiziksel Mol
 Bu modül, arama kurtarma sahasında katı betonarme molozların ve yaşam üçgeni hava ceplerinin
 ses üzerindeki fiziksel etkilerini modeller:
 
-1. Frekansa Bağlı Viskoelastik Zayıflama (Stokes-Kirchhoff):
-   Moloz tanecikleri ve mikro-çatlaklar arasındaki sürtünme sebebiyle akustik sönümleme
-   frekansın karesiyle orantılıdır (alpha(f) ~ f^2). 100 Hz inleme sesleri 2-3 metrede
-   yalnızca 1-2 dB kaybederken, 3000 Hz tiz sesler 50-70 dB zayıflayarak yok olur.
-2. Boşluk Rezonans Modları (Helmholtz & Cavity Modes):
-   Enkaz altındaki hava ceplerinde ses duran dalgalar (standing waves) oluşturur.
-   110-230 Hz aralığındaki rezonans modları güçlenir.
+Not: Bu modül ölçülmüş bir enkaz modeli değildir; fizikten esinlenen ve
+katsayıları kalibre edilmemiş bir veri artırma (domain randomization) aracıdır.
+
+1. Ampirik frekansa bağlı sönüm:
+   12*f^1.5 + 6*f^2 dB/m (f kHz), 90 dB'de kırpılır. 1 m'de ~100 Hz: 0.4 dB,
+   ~1 kHz: 18 dB, ~3 kHz: 116 dB (kırpılır). Gözenekli ortam için gerçek bir
+   model (ör. Johnson-Champoux-Allard) ölçümle kalibre edilmelidir.
+2. Boşluk rezonansı EQ'su:
+   Gauss biçimli tepe filtreleri (varsayılan 115/175/225 Hz). Eğitimde
+   random_cavity_modes() ile rastgeleleştirilir ki model sabit bir imzayı ezberlemesin.
 3. Parametrik Enkaz İmpuls Yanıtı (Rubble Impulse Response - RIR):
    Beton yüzeylerden erken yansımalar ve moloz içi saçılma (diffuse scattering) ile
    gerçekçi yankı ve faz dağılması.
@@ -171,8 +174,15 @@ def generate_rubble_ambient_noise(sr, duration_sec, snr_target_db=15.0, ref_sign
     return ambient.astype(np.float32)
 
 
+def random_cavity_modes(rng, n_modes=3):
+    """Rastgele boşluk rezonansı modları: (frekans_hz, kazanç_db, q)."""
+    freqs = np.sort(rng.uniform(80.0, 450.0, n_modes))
+    return tuple((float(f), float(rng.uniform(2.0, 9.0)), float(rng.uniform(2.0, 6.0)))
+                 for f in freqs)
+
+
 def apply_rubble_acoustics(y, sr, distance_m=2.0, void_resonance=True, rir_conv=True,
-                           noise_snr_db=None, rng=None):
+                           noise_snr_db=None, rng=None, modes=None):
     """
     Tam Fiziksel Enkaz Akustiği Boru Hattı:
     Girdi sinyaline sırasıyla:
@@ -189,15 +199,16 @@ def apply_rubble_acoustics(y, sr, distance_m=2.0, void_resonance=True, rir_conv=
 
     # 1. Boşluk Rezonans Modları
     if void_resonance:
-        out = apply_cavity_resonance(out, sr)
+        out = apply_cavity_resonance(out, sr, modes) if modes else apply_cavity_resonance(out, sr)
 
     # 2. Viskoelastik Sönümleme
     out = viscoelastic_damping(out, sr, distance_m=distance_m)
 
-    # 3. RIR Konvolüsyonu
+    # 3. RIR Konvolüsyonu (nedensel: "same" modu sinyali IR uzunluğunun
+    # yarısı kadar öne kaydırırdı, bu yüzden tam konvolüsyonun başı alınır)
     if rir_conv:
         rir = generate_rubble_rir(sr, distance_m=distance_m, rng=rng)
-        out = fftconvolve(out, rir, mode="same").astype(np.float32)
+        out = fftconvolve(out, rir, mode="full")[:len(out)].astype(np.float32)
 
     # 4. Enkaz Saha Gürültüsü
     if noise_snr_db is not None:

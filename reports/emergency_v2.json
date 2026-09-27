@@ -1,0 +1,625 @@
+{
+  "corpus": {
+    "clean": {
+      "n": 3174,
+      "accuracy": 0.8386893509766856,
+      "macro_f1": 0.797540163867202,
+      "false_alarm_rate": 0.2323943661971831,
+      "miss_rate": 0.0249424405218726,
+      "per_class": {
+        "normal": {
+          "precision": 0.8702594810379242,
+          "recall": 0.7676056338028169,
+          "f1": 0.8157156220767072,
+          "support": 568
+        },
+        "stress": {
+          "precision": 0.6133004926108374,
+          "recall": 0.9154411764705882,
+          "f1": 0.7345132743362832,
+          "support": 544
+        },
+        "panic": {
+          "precision": 0.6187290969899666,
+          "recall": 0.3894736842105263,
+          "f1": 0.4780361757105943,
+          "support": 475
+        },
+        "moan": {
+          "precision": 1.0,
+          "recall": 0.9746070133010882,
+          "f1": 0.9871402327005512,
+          "support": 827
+        },
+        "whisper": {
+          "precision": 0.9748677248677249,
+          "recall": 0.9697368421052631,
+          "f1": 0.9722955145118733,
+          "support": 760
+        }
+      },
+      "labels": [
+        "normal",
+        "stress",
+        "panic",
+        "moan",
+        "whisper"
+      ],
+      "confusion_matrix": [
+        [
+          436,
+          41,
+          88,
+          0,
+          3
+        ],
+        [
+          26,
+          498,
+          19,
+          0,
+          1
+        ],
+        [
+          29,
+          256,
+          185,
+          0,
+          5
+        ],
+        [
+          4,
+          3,
+          4,
+          806,
+          10
+        ],
+        [
+          6,
+          14,
+          3,
+          0,
+          737
+        ]
+      ]
+    },
+    "rubble_physical_mild": {
+      "n": 3174,
+      "accuracy": 0.5793950850661626,
+      "macro_f1": 0.48560572769123034,
+      "false_alarm_rate": 0.8045774647887324,
+      "miss_rate": 0.01266308518802763,
+      "per_class": {
+        "normal": {
+          "precision": 0.7708333333333334,
+          "recall": 0.1954225352112676,
+          "f1": 0.31179775280898875,
+          "support": 568
+        },
+        "stress": {
+          "precision": 0.4900497512437811,
+          "recall": 0.36213235294117646,
+          "f1": 0.4164904862579281,
+          "support": 544
+        },
+        "panic": {
+          "precision": 0.32142857142857145,
+          "recall": 0.09473684210526316,
+          "f1": 0.14634146341463414,
+          "support": 475
+        },
+        "moan": {
+          "precision": 0.42983490566037735,
+          "recall": 0.8814993954050786,
+          "f1": 0.5778834720570749,
+          "support": 827
+        },
+        "whisper": {
+          "precision": 0.9558080808080808,
+          "recall": 0.9960526315789474,
+          "f1": 0.9755154639175257,
+          "support": 760
+        }
+      },
+      "labels": [
+        "normal",
+        "stress",
+        "panic",
+        "moan",
+        "whisper"
+      ],
+      "confusion_matrix": [
+        [
+          111,
+          58,
+          48,
+          344,
+          7
+        ],
+        [
+          7,
+          197,
+          11,
+          317,
+          12
+        ],
+        [
+          5,
+          106,
+          45,
+          303,
+          16
+        ],
+        [
+          21,
+          41,
+          36,
+          729,
+          0
+        ],
+        [
+          0,
+          0,
+          0,
+          3,
+          757
+        ]
+      ]
+    },
+    "rubble_physical_medium": {
+      "n": 3174,
+      "accuracy": 0.6679269061121613,
+      "macro_f1": 0.5934293726135367,
+      "false_alarm_rate": 0.5211267605633803,
+      "miss_rate": 0.01841903300076746,
+      "per_class": {
+        "normal": {
+          "precision": 0.85,
+          "recall": 0.4788732394366197,
+          "f1": 0.6126126126126126,
+          "support": 568
+        },
+        "stress": {
+          "precision": 0.5405405405405406,
+          "recall": 0.625,
+          "f1": 0.5797101449275363,
+          "support": 544
+        },
+        "panic": {
+          "precision": 0.35384615384615387,
+          "recall": 0.0968421052631579,
+          "f1": 0.15206611570247933,
+          "support": 475
+        },
+        "moan": {
+          "precision": 0.5650793650793651,
+          "recall": 0.8609431680773881,
+          "f1": 0.682319118351701,
+          "support": 827
+        },
+        "whisper": {
+          "precision": 0.8982035928143712,
+          "recall": 0.9868421052631579,
+          "f1": 0.9404388714733543,
+          "support": 760
+        }
+      },
+      "labels": [
+        "normal",
+        "stress",
+        "panic",
+        "moan",
+        "whisper"
+      ],
+      "confusion_matrix": [
+        [
+          272,
+          38,
+          32,
+          221,
+          5
+        ],
+        [
+          8,
+          340,
+          33,
+          139,
+          24
+        ],
+        [
+          6,
+          201,
+          46,
+          178,
+          44
+        ],
+        [
+          34,
+          50,
+          19,
+          712,
+          12
+        ],
+        [
+          0,
+          0,
+          0,
+          10,
+          750
+        ]
+      ]
+    },
+    "rubble_physical_severe": {
+      "n": 3174,
+      "accuracy": 0.5671077504725898,
+      "macro_f1": 0.4541624826999825,
+      "false_alarm_rate": 0.8679577464788732,
+      "miss_rate": 0.021872601688411358,
+      "per_class": {
+        "normal": {
+          "precision": 0.5681818181818182,
+          "recall": 0.13204225352112675,
+          "f1": 0.21428571428571427,
+          "support": 568
+        },
+        "stress": {
+          "precision": 0.6232394366197183,
+          "recall": 0.32536764705882354,
+          "f1": 0.427536231884058,
+          "support": 544
+        },
+        "panic": {
+          "precision": 0.34375,
+          "recall": 0.06947368421052631,
+          "f1": 0.11558669001751314,
+          "support": 475
+        },
+        "moan": {
+          "precision": 0.4306956983536909,
+          "recall": 0.9806529625151149,
+          "f1": 0.5985239852398524,
+          "support": 827
+        },
+        "whisper": {
+          "precision": 0.9037227214377407,
+          "recall": 0.9263157894736842,
+          "f1": 0.9148797920727745,
+          "support": 760
+        }
+      },
+      "labels": [
+        "normal",
+        "stress",
+        "panic",
+        "moan",
+        "whisper"
+      ],
+      "confusion_matrix": [
+        [
+          75,
+          7,
+          19,
+          465,
+          2
+        ],
+        [
+          50,
+          177,
+          38,
+          251,
+          28
+        ],
+        [
+          4,
+          97,
+          33,
+          300,
+          41
+        ],
+        [
+          3,
+          3,
+          6,
+          811,
+          4
+        ],
+        [
+          0,
+          0,
+          0,
+          56,
+          704
+        ]
+      ]
+    }
+  },
+  "by_synth": {
+    "clean": {
+      "dsp_moan": {
+        "n": 827,
+        "accuracy": 0.9746070133010882,
+        "predictions": {
+          "moan": {
+            "moan": 806,
+            "whisper": 10,
+            "panic": 4,
+            "stress": 3,
+            "normal": 4
+          }
+        }
+      },
+      "dsp_whisper": {
+        "n": 760,
+        "accuracy": 0.9697368421052631,
+        "predictions": {
+          "whisper": {
+            "whisper": 737,
+            "stress": 14,
+            "normal": 6,
+            "panic": 3
+          }
+        }
+      },
+      "none": {
+        "n": 1587,
+        "accuracy": 0.7051039697542533,
+        "predictions": {
+          "normal": {
+            "normal": 436,
+            "stress": 41,
+            "panic": 88,
+            "whisper": 3
+          },
+          "panic": {
+            "panic": 185,
+            "stress": 256,
+            "normal": 29,
+            "whisper": 5
+          },
+          "stress": {
+            "stress": 498,
+            "panic": 19,
+            "normal": 26,
+            "whisper": 1
+          }
+        }
+      }
+    },
+    "rubble_physical_mild": {
+      "dsp_moan": {
+        "n": 827,
+        "accuracy": 0.8814993954050786,
+        "predictions": {
+          "moan": {
+            "moan": 729,
+            "normal": 21,
+            "stress": 41,
+            "panic": 36
+          }
+        }
+      },
+      "dsp_whisper": {
+        "n": 760,
+        "accuracy": 0.9960526315789474,
+        "predictions": {
+          "whisper": {
+            "whisper": 757,
+            "moan": 3
+          }
+        }
+      },
+      "none": {
+        "n": 1587,
+        "accuracy": 0.22243226212980466,
+        "predictions": {
+          "normal": {
+            "stress": 58,
+            "panic": 48,
+            "moan": 344,
+            "normal": 111,
+            "whisper": 7
+          },
+          "panic": {
+            "moan": 303,
+            "stress": 106,
+            "panic": 45,
+            "whisper": 16,
+            "normal": 5
+          },
+          "stress": {
+            "stress": 197,
+            "normal": 7,
+            "moan": 317,
+            "panic": 11,
+            "whisper": 12
+          }
+        }
+      }
+    },
+    "rubble_physical_medium": {
+      "dsp_moan": {
+        "n": 827,
+        "accuracy": 0.8609431680773881,
+        "predictions": {
+          "moan": {
+            "panic": 19,
+            "moan": 712,
+            "normal": 34,
+            "stress": 50,
+            "whisper": 12
+          }
+        }
+      },
+      "dsp_whisper": {
+        "n": 760,
+        "accuracy": 0.9868421052631579,
+        "predictions": {
+          "whisper": {
+            "whisper": 750,
+            "moan": 10
+          }
+        }
+      },
+      "none": {
+        "n": 1587,
+        "accuracy": 0.41461877756773785,
+        "predictions": {
+          "normal": {
+            "normal": 272,
+            "moan": 221,
+            "panic": 32,
+            "stress": 38,
+            "whisper": 5
+          },
+          "panic": {
+            "moan": 178,
+            "panic": 46,
+            "stress": 201,
+            "normal": 6,
+            "whisper": 44
+          },
+          "stress": {
+            "normal": 8,
+            "stress": 340,
+            "panic": 33,
+            "moan": 139,
+            "whisper": 24
+          }
+        }
+      }
+    },
+    "rubble_physical_severe": {
+      "dsp_moan": {
+        "n": 827,
+        "accuracy": 0.9806529625151149,
+        "predictions": {
+          "moan": {
+            "moan": 811,
+            "panic": 6,
+            "stress": 3,
+            "normal": 3,
+            "whisper": 4
+          }
+        }
+      },
+      "dsp_whisper": {
+        "n": 760,
+        "accuracy": 0.9263157894736842,
+        "predictions": {
+          "whisper": {
+            "whisper": 704,
+            "moan": 56
+          }
+        }
+      },
+      "none": {
+        "n": 1587,
+        "accuracy": 0.17958412098298676,
+        "predictions": {
+          "normal": {
+            "panic": 19,
+            "normal": 75,
+            "moan": 465,
+            "stress": 7,
+            "whisper": 2
+          },
+          "panic": {
+            "panic": 33,
+            "normal": 4,
+            "moan": 300,
+            "stress": 97,
+            "whisper": 41
+          },
+          "stress": {
+            "moan": 251,
+            "stress": 177,
+            "panic": 38,
+            "normal": 50,
+            "whisper": 28
+          }
+        }
+      }
+    }
+  },
+  "external": {
+    "vivae": {
+      "clean": {
+        "n": 265,
+        "accuracy": 0.026415094339622643,
+        "predictions": {
+          "moan": {
+            "whisper": 6,
+            "stress": 54,
+            "normal": 26,
+            "panic": 3
+          },
+          "panic": {
+            "stress": 143,
+            "panic": 7,
+            "normal": 23,
+            "whisper": 3
+          }
+        }
+      },
+      "rubble_physical_mild": {
+        "n": 265,
+        "accuracy": 0.1169811320754717,
+        "predictions": {
+          "moan": {
+            "moan": 28,
+            "panic": 2,
+            "stress": 48,
+            "whisper": 10,
+            "normal": 1
+          },
+          "panic": {
+            "stress": 122,
+            "moan": 28,
+            "whisper": 19,
+            "normal": 4,
+            "panic": 3
+          }
+        }
+      },
+      "rubble_physical_medium": {
+        "n": 265,
+        "accuracy": 0.17735849056603772,
+        "predictions": {
+          "moan": {
+            "stress": 40,
+            "moan": 35,
+            "panic": 11,
+            "whisper": 3
+          },
+          "panic": {
+            "whisper": 15,
+            "stress": 118,
+            "moan": 29,
+            "normal": 2,
+            "panic": 12
+          }
+        }
+      },
+      "rubble_physical_severe": {
+        "n": 265,
+        "accuracy": 0.29056603773584905,
+        "predictions": {
+          "moan": {
+            "moan": 59,
+            "normal": 3,
+            "panic": 4,
+            "stress": 22,
+            "whisper": 1
+          },
+          "panic": {
+            "stress": 103,
+            "moan": 41,
+            "whisper": 8,
+            "panic": 18,
+            "normal": 6
+          }
+        }
+      }
+    }
+  }
+}

@@ -232,6 +232,7 @@ python scripts/download_data.py tess      # a single dataset
 | [SAVEE](http://kahlan.eps.surrey.ac.uk/savee/) | English | human | research only | manual |
 | [JL-Corpus](https://www.kaggle.com/datasets/tli725/jl-corpus) | English (NZ) | human | CC0 | manual |
 | [ESC-50](https://github.com/karolpiczak/ESC-50) | — | non-human | CC BY-NC 3.0 | automatic |
+| [VIVAE](https://doi.org/10.5281/zenodo.4066235) | non-verbal | human, **test only** | CC BY-NC 4.0 | automatic |
 
 ### Manifest
 
@@ -379,6 +380,36 @@ with augmented copies on both sides, and 0.630 ± 0.11 in speaker-independent
 cross-validation. The random-split number was inflated by leakage; the new 0.666 on
 held-out speakers is the comparable figure.
 
+### v2 (5 classes: + whisper, moan) — experimental, not used by the live pipeline
+
+`python scripts/extract_features_v2.py --task all && python scripts/train_v2.py --task all`.
+Whisper and moan training data are **synthetic** (`whisper_converter.py`). Features are
+loudness-normalised, randomised rubble augmentation is applied to every class, and
+test rows come from unseen speakers under fixed rubble conditions. Real recordings
+that are never trained on ([VIVAE](docs/REAL_DATA.md): 89 mild-pain moans, 176 fear
+vocalisations) are reported separately. Full numbers: `reports/*_v2*.json`.
+
+| Test set (unseen speakers) | Emergency v2 macro-F1 | whisper recall | moan recall | normal recall |
+|---|---|---|---|---|
+| clean | 0.798 | 0.97 (synthetic) | 0.97 (synthetic) | 0.77 |
+| rubble mild / medium / severe | 0.49 / 0.59 / 0.45 | 0.93–1.00 | 0.86–0.98 | 0.13–0.48 |
+| **VIVAE real moans, clean** | — | — | **0 / 89** | — |
+
+What this shows:
+
+1. **The synthetic whisper/moan scores measure the converter, not real voices.** Real
+   moans from VIVAE are classified as `stress` (54) or `normal` (26), never `moan`.
+   Under simulated rubble more of them become `moan`, but so do real fear screams
+   (41/176 under severe rubble): the model has learned "low-passed audio = moan".
+2. **The human detector rejects non-verbal vocalisations.** 95% of VIVAE clips
+   (moans, screams, groans) are classified `non_human` by v2, and 97% by v1. It was
+   trained on speech only, so a survivor who moans instead of talking never reaches
+   stage 2. This is the most important finding so far.
+3. Cost-sensitive class weights (whisper 8×, moan 6×) did not raise whisper/moan
+   recall over `class_weight="balanced"` (0.97 in both) but raised the false-alarm rate
+   from 0.169 to 0.232 (`reports/emergency_v2_balanced.json`).
+4. Rubble simulation still collapses the speech classes (normal recall 0.13–0.48).
+
 ---
 
 ## Known limitations
@@ -414,7 +445,10 @@ These are stated openly on purpose:
 - [x] Evaluation with confusion matrix, false-alarm and miss rates
 - [x] Detections vs. alarms separated; dashboard controls the listener
 - [x] Retrain both models with the new pipeline and publish the reports here
-- [ ] Loudness-normalised features, so quiet/muffled voices are not read as calm
+- [x] Loudness-normalised features (v2)
+- [x] External real-data test set (VIVAE) and a folder for field recordings ([docs/REAL_DATA.md](docs/REAL_DATA.md))
+- [ ] Human detector trained with non-verbal vocalisations (moans, screams) as `human`
+- [ ] Real whispered speech (CHAINS / wTIMIT / own recordings)
 - [ ] Real scream / distress-call data (e.g. the AudioSet *Screaming* class)
 - [ ] Knock/tap detection via onset analysis, the most realistic signal from under rubble
 - [ ] Pretrained audio embeddings (YAMNet / PANNs) as features
