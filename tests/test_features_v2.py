@@ -62,9 +62,9 @@ def test_spectral_flatness_detects_whisper_noise():
     y_tone = tone(HUMAN_SR, sec=1.0, freq=440.0)
     feats_tone = human_features_v2(y_tone, HUMAN_SR)
 
-    # Index 28: flatness_mean
-    assert feats_noise[28] > feats_tone[28]
-    assert feats_noise[28] > 0.3
+    # Index 27: flatness_mean
+    assert feats_noise[27] > feats_tone[27]
+    assert feats_noise[27] > 0.3
 
 
 def test_sub_band_ratio_detects_low_frequency_moan():
@@ -76,9 +76,9 @@ def test_sub_band_ratio_detects_low_frequency_moan():
     y_high = tone(EMERGENCY_SR, sec=1.0, freq=2500.0)
     feats_high = emergency_features_v2(y_high, EMERGENCY_SR)
 
-    # Index 17: low_ratio (0-500 Hz oranı)
-    assert feats_moan[17] > 0.85
-    assert feats_high[17] < 0.10
+    # Index 16: low_ratio (0-500 Hz oranı)
+    assert feats_moan[16] > 0.85
+    assert feats_high[16] < 0.10
 
 
 def test_resample_cross_sr():
@@ -105,3 +105,14 @@ def test_silence_all_zeros():
     assert f_emerg.shape == (EMERGENCY_N_FEATURES_V2,)
     assert np.all(np.isfinite(f_human))
     assert np.all(np.isfinite(f_emerg))
+
+
+def test_features_are_loudness_invariant():
+    # Aynı sinyal 40 dB daha sessiz geldiğinde öznitelikler değişmemeli; aksi
+    # hâlde model "sessizse fısıltıdır" kısayolunu öğrenir.
+    y = tone(EMERGENCY_SR, sec=1.0, freq=200.0) + white_noise(EMERGENCY_SR, sec=1.0)
+    quiet = (y * 0.01).astype(np.float32)
+    np.testing.assert_allclose(emergency_features_v2(y), emergency_features_v2(quiet),
+                               rtol=1e-3, atol=1e-3)
+    np.testing.assert_allclose(human_features_v2(y, EMERGENCY_SR),
+                               human_features_v2(quiet, EMERGENCY_SR), rtol=1e-3, atol=1e-3)

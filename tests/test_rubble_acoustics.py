@@ -114,3 +114,22 @@ def test_edge_cases():
     y_zero = np.zeros(16000, dtype=np.float32)
     out_zero = apply_rubble_acoustics(y_zero, 16000, noise_snr_db=None)
     assert np.all(np.isfinite(out_zero))
+
+
+def test_rir_convolution_is_causal():
+    # Tek bir darbe, enkazdan geçtikten sonra daha erken duyulamaz.
+    sr = 16000
+    y = np.zeros(sr, dtype=np.float32)
+    y[sr // 2] = 1.0
+    out = apply_rubble_acoustics(y, sr, distance_m=1.0, void_resonance=False, rir_conv=True)
+    assert np.max(np.abs(out[: sr // 2 - 50])) < 0.05 * np.max(np.abs(out))
+
+
+def test_random_rubble_varies_with_rng():
+    from augment_rubble import random_rubble
+    sr = 16000
+    y = np.random.default_rng(0).standard_normal(sr).astype(np.float32) * 0.1
+    a = random_rubble(y, sr, np.random.default_rng(1))
+    b = random_rubble(y, sr, np.random.default_rng(2))
+    assert a.shape == y.shape and np.all(np.isfinite(a))
+    assert not np.allclose(a, b)

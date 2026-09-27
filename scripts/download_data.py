@@ -11,6 +11,7 @@ Kullanım:
 
 Klasör yapısı ve lisanslar dataset.py'deki DATASETS tablosundan gelir:
     data/human/{berlin,ravdess,tess,subesco,savee,jl_corpus}/
+    data/human/{vivae,field}/   (yalnızca test, bkz. docs/REAL_DATA.md)
     data/non-human/esc50/
 
 Sonraki adım: python scripts/build_manifest.py
@@ -53,6 +54,15 @@ DATASETS = {
         "url": "https://github.com/karoldvl/ESC-50/archive/master.zip",
         "zip_subdir": "audio",
         "info": "ESC-50 çevresel ses veri seti",
+    },
+    "vivae": {
+        "url": "https://zenodo.org/records/4066235/files/VIVAE.zip?download=1",
+        "info": "VIVAE sözsüz vokalizasyonlar (gerçek ağrı/inleme, yalnızca test), Holz vd. 2022",
+    },
+    "field": {
+        "manual": "Gerçek fısıltı/inleme kayıtları: data/human/field/<etiket>/<konuşmacı>/*.wav "
+                  "(etiket: whisper|moan|normal|stress|panic). Kaynaklar için docs/REAL_DATA.md.",
+        "info": "Elle eklenen gerçek kayıtlar (yalnızca test)",
     },
     "savee": {
         "manual": "Kayıt gerektirir: http://kahlan.eps.surrey.ac.uk/savee/ "

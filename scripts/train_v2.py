@@ -1,48 +1,48 @@
 """
-train_v2.py - 5 Sınıflı ve Zayıf Vokal Destekli Model Eğitim Scripti.
+train_v2.py - v2 modellerini eğitir, görülmemiş konuşmacılar ve gerçek dış veri
+üzerinde değerlendirir; models/ ve reports/ altına yazar.
 
-Bu script:
-1. features/<task>_v2.npz öznitelik dosyalarını yükler.
-2. Görülmemiş konuşmacılar (held-out test split) üzerinde konuşmacı bağımsız doğrulamayı korur.
-3. Maliyete Duyarlı Kayıp (Cost-Sensitive Matrix / class_weight) uygulayarak fısıltı ve inleme
-   gibi hayati sinyallerin kaçırılmasını engeller:
-     - normal:  1.0
-     - stress:  3.0
-     - panic:   3.0
-     - moan:    6.0  (Ağır travma/inleme)
-     - whisper: 8.0  (Kritik evre fısıltı - en yüksek ceza)
-4. Modeli ve eşlik eden .json meta verisini models/ dizinine kaydeder.
+Değerlendirme (hepsi test bölmesi, eğitimde hiç görülmemiş konuşmacılar):
+  corpus      Korpus test kayıtları + onlardan sentezlenen fısıltı/inleme,
+              her enkaz koşulunda (clean, rubble_physical_mild/medium/severe).
+  by_synth    Aynı satırlar, kaynağa göre ayrık: gerçek kayıtlar / sentetik
+              fısıltı / sentetik inleme. Sentetik sonuçlar dönüştürücünün
+              kendisini de ölçer, gerçek fısıltı/inleme başarısı yerine geçmez.
+  external    eval_only veri setleri (VIVAE gerçek ağrı/korku vokalizasyonları,
+              field/ kayıtları); modelin hiç görmediği gerçek veri.
+
+Sınıf ağırlıkları:
+  cost      normal 1, stress 3, panic 3, moan 6, whisper 8 (kaçırmanın bedeli)
+  balanced  sklearn "balanced" (karşılaştırma için)
 
 Kullanım:
-    python scripts/train_v2.py --task emergency
-    python scripts/train_v2.py --task human
     python scripts/train_v2.py --task all
+    python scripts/train_v2.py --task emergency --class-weight balanced --no-save
 """
 import argparse
 import json
 import os
 import sys
+from collections import Counter
 from datetime import datetime, timezone
 
 import joblib
 import numpy as np
 import sklearn
 from sklearn.ensemble import RandomForestClassifier
-from sklearn.metrics import classification_report, f1_score, accuracy_score
 
 sys.path.insert(0, os.path.dirname(os.path.dirname(os.path.abspath(__file__))))
 
-from dataset import FEATURES_DIR, MODELS_DIR, ROOT
+from dataset import EMERGENCY_CLASSES_V2, EVAL_ONLY_DATASETS, FEATURES_DIR, MODELS_DIR, ROOT
+from evaluation import format_summary, summarize
 from features_v2 import FEATURE_SPECS_V2
+from pipeline_v2 import MODEL_FILES_V2
 
 TASKS = ("emergency", "human")
+REPORTS_DIR = os.path.join(ROOT, "reports")
+LABELS = {"emergency": list(EMERGENCY_CLASSES_V2), "human": ["human", "non_human"]}
 
-MODEL_FILES_V2 = {
-    "human": "human_detector_v2.pkl",
-    "emergency": "emergency_classifier_v2.pkl",
-}
-
-# Maliyet duyarlı sınıf ağırlıkları (fısıltı ve inleme gözden kaçamaz!)
+# Maliyet duyarlı sınıf ağırlıkları (fısıltı ve inleme gözden kaçamaz)
 COST_WEIGHTS_V2 = {
     "normal": 1.0,
     "stress": 3.0,
@@ -53,128 +53,133 @@ COST_WEIGHTS_V2 = {
 
 
 def load_features_v2(task):
-    npz_path = os.path.join(FEATURES_DIR, f"{task}_v2.npz")
-    if not os.path.exists(npz_path):
-        sys.exit(
-            f"[!] HATA: Öznitelik matrisi bulunamadı: {npz_path}\n"
-            f"    Önce öznitelikleri çıkarın: python scripts/extract_features_v2.py --task {task}"
-        )
-    return np.load(npz_path, allow_pickle=True)
+    path = os.path.join(FEATURES_DIR, f"{task}_v2.npz")
+    if not os.path.exists(path):
+        sys.exit(f"Öznitelik dosyası yok: {os.path.relpath(path, ROOT)}\n"
+                 f"Önce: python scripts/extract_features_v2.py --task {task}")
+    with np.load(path) as d:
+        if "condition" not in d.files:
+            sys.exit("Eski biçimli öznitelik dosyası; extract_features_v2.py'yi yeniden çalıştırın.")
+        return {k: d[k] for k in d.files}
 
 
-def make_model_v2(task):
+def make_model_v2(task, class_weight="cost"):
     if task == "human":
-        return RandomForestClassifier(
-            n_estimators=250,
-            max_depth=20,
-            min_samples_leaf=2,
-            class_weight="balanced",
-            random_state=42,
-            n_jobs=-1,
-        )
-    # emergency v2: 5 sınıflı maliyet ağırlıklı model
-    return RandomForestClassifier(
-        n_estimators=350,
-        max_depth=22,
-        min_samples_leaf=2,
-        class_weight=COST_WEIGHTS_V2,
-        random_state=42,
-        n_jobs=-1,
-    )
+        return RandomForestClassifier(n_estimators=250, max_depth=20, min_samples_leaf=2,
+                                      class_weight="balanced", random_state=42, n_jobs=-1)
+    weights = COST_WEIGHTS_V2 if class_weight == "cost" else "balanced"
+    return RandomForestClassifier(n_estimators=350, max_depth=22, min_samples_leaf=2,
+                                  class_weight=weights, random_state=42, n_jobs=-1)
 
 
-def train_task_v2(task, n_trees=None, max_depth=None):
+def prediction_counts(y_true, y_pred):
+    """Tek sınıflı dış veri için: her gerçek sınıf hangi sınıflara tahmin edildi."""
+    return {str(t): dict(Counter(y_pred[y_true == t].tolist())) for t in sorted(set(y_true))}
+
+
+def evaluate(task, model, d):
+    labels = LABELS[task]
+    test = d["split"] == "test"
+    external = np.isin(d["dataset"], sorted(EVAL_ONLY_DATASETS))
+    pred = model.predict(d["X"])
+    conditions = [c for c in dict.fromkeys(d["condition"][test].tolist())]
+
+    def summ(mask):
+        return summarize(task, d["y"][mask], pred[mask], labels)
+
+    report = {"corpus": {}, "by_synth": {}, "external": {}}
+    for cond in conditions:
+        at = test & (d["condition"] == cond)
+        report["corpus"][cond] = summ(at & ~external)
+        report["by_synth"][cond] = {}
+        for synth in sorted(set(d["synth"][at & ~external])):
+            m = at & ~external & (d["synth"] == synth)
+            report["by_synth"][cond][synth] = {
+                "n": int(m.sum()),
+                "accuracy": float(np.mean(pred[m] == d["y"][m])),
+                "predictions": prediction_counts(d["y"][m], pred[m]),
+            }
+        for ds in sorted(set(d["dataset"][at & external])):
+            m = at & (d["dataset"] == ds)
+            report["external"].setdefault(ds, {})[cond] = {
+                "n": int(m.sum()),
+                "accuracy": float(np.mean(pred[m] == d["y"][m])),
+                "predictions": prediction_counts(d["y"][m], pred[m]),
+            }
+    return report
+
+
+def print_report(task, report):
+    clean = report["corpus"].get("clean")
+    if clean:
+        print("\nGörülmemiş konuşmacılar, temiz koşul (gerçek + sentetik):\n" + format_summary(clean))
+    print("\nEnkaz koşullarına göre (korpus testi):")
+    for cond, s in report["corpus"].items():
+        rec = "  ".join(f"{lab} {c['recall']:.2f}" for lab, c in s["per_class"].items())
+        print(f"  {cond:24s} macro-F1 {s['macro_f1']:.3f} | recall: {rec}")
+    for ds, per_cond in report["external"].items():
+        print(f"\nDış gerçek veri: {ds}")
+        for cond, r in per_cond.items():
+            print(f"  {cond:24s} n={r['n']:4d} doğruluk {r['accuracy']:.3f}  {r['predictions']}")
+
+
+def train_task_v2(task, class_weight="cost", save=True):
     d = load_features_v2(task)
-    split = d["split"]
-    transform = d["transform"]
+    train = d["split"] == "train"
+    print(f"\n=== {task}_v2 (sınıf ağırlığı: {class_weight if task == 'emergency' else 'balanced'}) ===")
+    print(f"train: {train.sum()} satır ({len(set(d['group'][train]))} konuşmacı/grup), "
+          f"test: {(~train).sum()} satır ({len(set(d['group'][~train]))} konuşmacı/grup)")
+    print("train sınıfları:", dict(Counter(d["y"][train].tolist())))
 
-    # Eğitim verisi: train split'indeki tüm kayıtlar (orijinal + artıramalar)
-    train_mask = split == "train"
-    # Test verisi: test split'indeki yalnızca orijinal (orijinal kayıtlar)
-    test_mask = (split == "test") & (transform == "original")
+    model = make_model_v2(task, class_weight).fit(d["X"][train], d["y"][train])
+    report = evaluate(task, model, d)
+    print_report(task, report)
 
-    if not test_mask.any():
-        # Sentetik Whisper/Moan testi için tüm test kayıtlarını kullan
-        test_mask = split == "test"
+    os.makedirs(REPORTS_DIR, exist_ok=True)
+    suffix = "" if class_weight == "cost" or task == "human" else f"_{class_weight}"
+    report_path = os.path.join(REPORTS_DIR, f"{task}_v2{suffix}.json")
+    with open(report_path, "w", encoding="utf-8") as f:
+        json.dump(report, f, indent=2, ensure_ascii=False)
+    print(f"\n-> {os.path.relpath(report_path, ROOT)}")
+    if not save:
+        return report
 
-    labels = sorted(list(set(d["y"])))
-    print(f"\n=======================================================")
-    print(f"[*] Görev: {task}_v2 Modeli Eğitiliyor")
-    print(f"[*] Sınıflar ({len(labels)}): {labels}")
-    print(f"[*] Eğitim Satırları: {train_mask.sum()} | Test Satırları: {test_mask.sum()}")
-    print(f"=======================================================")
-
-    model = make_model_v2(task)
-    if n_trees:
-        model.set_params(n_estimators=n_trees)
-    if max_depth:
-        model.set_params(max_depth=max_depth)
-
-    X_train, y_train = d["X"][train_mask], d["y"][train_mask]
-    X_test, y_test = d["X"][test_mask], d["y"][test_mask]
-
-    print("[*] Random Forest eğitimi yapılıyor (n_jobs=-1)...")
-    model.fit(X_train, y_train)
-
-    # Değerlendirme
-    y_pred = model.predict(X_test)
-    acc = accuracy_score(y_test, y_pred)
-    f1_macro = f1_score(y_test, y_pred, average="macro", zero_division=0)
-
-    print("\n--- Test Kümesi Başarı Raporu ---")
-    print(f"Doğruluk (Accuracy): %{acc * 100:.2f}")
-    print(f"Macro F1-Score:     %{f1_macro * 100:.2f}")
-    print("\nDetaylı Sınıflandırma Raporu:")
-    print(classification_report(y_test, y_pred, digits=4, zero_division=0))
-
-    # Modeli diske kaydet
+    with open(os.path.join(FEATURES_DIR, f"{task}_v2.json"), encoding="utf-8") as f:
+        feat_meta = json.load(f)
     os.makedirs(MODELS_DIR, exist_ok=True)
-    model_filename = MODEL_FILES_V2[task]
-    model_path = os.path.join(MODELS_DIR, model_filename)
+    model_path = os.path.join(MODELS_DIR, MODEL_FILES_V2[task])
     joblib.dump(model, model_path, compress=3)
-
-    # Metadata JSON
-    features_meta_path = os.path.join(FEATURES_DIR, f"{task}_v2.json")
-    feat_meta = {}
-    if os.path.exists(features_meta_path):
-        with open(features_meta_path, encoding="utf-8") as f:
-            feat_meta = json.load(f)
-
     meta = {
         "task": f"{task}_v2",
         "labels": [str(c) for c in model.classes_],
         "feature_spec": FEATURE_SPECS_V2[task],
         "sklearn_version": sklearn.__version__,
         "created": datetime.now(timezone.utc).isoformat(timespec="seconds"),
-        "manifest_sha256": feat_meta.get("manifest_sha256", ""),
-        "n_train_rows": int(train_mask.sum()),
-        "n_test_rows": int(test_mask.sum()),
-        "accuracy": float(acc),
-        "f1_macro": float(f1_macro),
-        "classes": labels,
+        "manifest_sha256": feat_meta["manifest_sha256"],
+        "class_weight": COST_WEIGHTS_V2 if task == "emergency" and class_weight == "cost" else "balanced",
+        "n_train_rows": int(train.sum()),
+        "eval_protocol": "held-out speakers; synthetic whisper/moan from test speakers; "
+                         "fixed rubble conditions; eval_only datasets as external real data",
+        "metrics_clean": report["corpus"].get("clean"),
+        "report": os.path.relpath(report_path, ROOT).replace(os.sep, "/"),
     }
-
-    meta_path = os.path.splitext(model_path)[0] + ".json"
-    with open(meta_path, "w", encoding="utf-8") as f:
+    with open(os.path.splitext(model_path)[0] + ".json", "w", encoding="utf-8") as f:
         json.dump(meta, f, indent=2, ensure_ascii=False)
-
-    print(f"[+] Model başarıyla kaydedildi -> {os.path.relpath(model_path, ROOT)}")
-    print(f"[+] Metadata başarıyla kaydedildi -> {os.path.relpath(meta_path, ROOT)}")
+    print(f"-> {os.path.relpath(model_path, ROOT)} (+ .json)")
+    return report
 
 
 def main():
     if hasattr(sys.stdout, "reconfigure"):
         sys.stdout.reconfigure(encoding="utf-8")
-
-    p = argparse.ArgumentParser(description="V2 Model Eğitimi (Fısıltı ve İnleme Destekli)")
+    p = argparse.ArgumentParser(description=__doc__,
+                                formatter_class=argparse.RawDescriptionHelpFormatter)
     p.add_argument("--task", choices=TASKS + ("all",), default="all")
-    p.add_argument("--n-trees", type=int, default=None)
-    p.add_argument("--max-depth", type=int, default=None)
+    p.add_argument("--class-weight", choices=("cost", "balanced"), default="cost")
+    p.add_argument("--no-save", action="store_true", help="modeli kaydetme, yalnızca raporla")
     args = p.parse_args()
-
-    tasks = TASKS if args.task == "all" else (args.task,)
-    for t in tasks:
-        train_task_v2(t, n_trees=args.n_trees, max_depth=args.max_depth)
+    for t in TASKS if args.task == "all" else (args.task,):
+        train_task_v2(t, args.class_weight, save=not args.no_save)
 
 
 if __name__ == "__main__":
