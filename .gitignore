@@ -4,10 +4,15 @@ __pycache__/
 .venv/
 venv/
 .ipynb_checkpoints/
+.pytest_cache/
 
 # Runtime output
 alerts_log.json
 *.log
+
+# Raw datasets (downloaded by scripts/download_data.py, not redistributed)
+data/
+data_emergency/
 
 # Generated / intermediate data (re-created by the prep scripts)
 data_final/
