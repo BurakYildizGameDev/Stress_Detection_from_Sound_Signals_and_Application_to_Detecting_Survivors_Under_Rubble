@@ -38,6 +38,16 @@ EMOTION_TO_CLASS = {
     "fear": "panic",
 }
 
+# Aşama 1: Fısıltı ve İnleme destekli 5 sınıflı acil durum yapısı
+EMERGENCY_CLASSES_V2 = ("normal", "stress", "panic", "moan", "whisper")
+EMOTION_TO_CLASS_V2 = {
+    **EMOTION_TO_CLASS,
+    "moan": "moan",
+    "groan": "moan",
+    "pain": "moan",
+    "whisper": "whisper",
+}
+
 # ESC-50 içindeki insan kaynaklı sesli sınıflar "non_human" diye etiketlenemez.
 ESC50_HUMAN_VOCAL = {
     20: "crying_baby", 21: "sneezing", 23: "breathing",

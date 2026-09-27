@@ -54,8 +54,9 @@ AUGMENTATIONS = {
     },
 }
 
-# Değerlendirme koşulları. Gerçek enkaz akustiğinin yerini tutmaz; yalnızca
-# modelin bu yönlerdeki bozulmaya ne kadar duyarlı olduğunu gösterir.
+from rubble_acoustics import apply_rubble_acoustics
+
+# Değerlendirme koşulları.
 CONDITIONS = {
     "clean": lambda y, sr, rng: y,
     "noise_20db": lambda y, sr, rng: add_noise_snr(y, 20, rng),
@@ -65,4 +66,14 @@ CONDITIONS = {
     "lowpass_1k": lambda y, sr, rng: lowpass(y, sr, 1000),
     "lowpass_400": lambda y, sr, rng: lowpass(y, sr, 400),
     "rubble_sim": lambda y, sr, rng: add_noise_snr(gain_db(lowpass(y, sr, 400), -20), 10, rng),
+    # 2. Aşama: Fiziksel enkaz akustiği koşulları
+    "rubble_physical_mild": lambda y, sr, rng: apply_rubble_acoustics(
+        y, sr, distance_m=1.0, void_resonance=True, rir_conv=True, noise_snr_db=None, rng=rng
+    ),
+    "rubble_physical_medium": lambda y, sr, rng: apply_rubble_acoustics(
+        y, sr, distance_m=2.5, void_resonance=True, rir_conv=True, noise_snr_db=15.0, rng=rng
+    ),
+    "rubble_physical_severe": lambda y, sr, rng: apply_rubble_acoustics(
+        y, sr, distance_m=4.0, void_resonance=True, rir_conv=True, noise_snr_db=8.0, rng=rng
+    ),
 }
