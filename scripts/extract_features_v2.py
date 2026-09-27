@@ -38,8 +38,8 @@ sys.path.insert(0, os.path.dirname(os.path.dirname(os.path.abspath(__file__))))
 
 from augment import AUGMENTATIONS, CONDITIONS
 from augment_rubble import random_rubble
-from dataset import (EVAL_ONLY_DATASETS, FEATURES_DIR, MANIFEST_PATH, ROOT,
-                     SPLIT_SEED, file_sha256, read_manifest)
+from dataset import (EVAL_ONLY_DATASETS, FEATURES_DIR, MANIFEST_PATH, NONVERBAL_DATASETS,
+                     ROOT, SPLIT_SEED, file_sha256, read_manifest)
 from features_v2 import FEATURE_FUNCS_V2, FEATURE_SPECS_V2
 from whisper_converter import (convert_to_moan_dsp, convert_to_whisper_dsp,
                                random_moan_params, random_whisper_params)
@@ -54,8 +54,10 @@ def features_path_v2(task):
     return os.path.join(FEATURES_DIR, f"{task}_v2.npz")
 
 
-def select_rows_v2(task, records, max_per_dataset=300, seed=SPLIT_SEED):
-    """Göreve giren kayıtlar ve etiketleri."""
+def select_rows_v2(task, records, max_per_dataset=300, max_per_nonverbal=1500, seed=SPLIT_SEED):
+    """Göreve giren kayıtlar ve etiketleri. İnsan-sesi görevinde konuşma veri
+    setleri max_per_dataset, sözsüz ses veri setleri max_per_nonverbal kayıtla
+    sınırlanır (sözsüz sesler de insan sınıfında yeterince temsil edilsin)."""
     if task == "emergency":
         return [(r, r.emergency_class_v2) for r in records if r.emergency_class_v2]
 
@@ -65,15 +67,16 @@ def select_rows_v2(task, records, max_per_dataset=300, seed=SPLIT_SEED):
         if r.role == "human":
             by_ds.setdefault(r.dataset, []).append(r)
     for ds, recs in sorted(by_ds.items()):
-        if max_per_dataset and len(recs) > max_per_dataset:
-            recs = random.Random(f"{seed}-{ds}").sample(recs, max_per_dataset)
+        cap = max_per_nonverbal if ds in NONVERBAL_DATASETS else max_per_dataset
+        if cap and len(recs) > cap:
+            recs = random.Random(f"{seed}-{ds}").sample(recs, cap)
         rows += [(r, "human") for r in recs]
     return rows
 
 
 def synth_source(task, rec):
     """Bu kayıttan fısıltı/inleme sentezlenir mi?"""
-    if rec.dataset in EVAL_ONLY_DATASETS:
+    if rec.dataset in EVAL_ONLY_DATASETS or rec.dataset in NONVERBAL_DATASETS:
         return False
     if task == "emergency":
         return rec.emergency_class_v2 in SPEECH_CLASSES
@@ -128,9 +131,9 @@ def process_row_v2(task, rec, label, augment):
     return out, None
 
 
-def extract_task_v2(task, augment=True, max_per_dataset=300, n_jobs=-1):
+def extract_task_v2(task, augment=True, max_per_dataset=300, max_per_nonverbal=1500, n_jobs=-1):
     manifest = read_manifest(MANIFEST_PATH)
-    rows = select_rows_v2(task, manifest, max_per_dataset)
+    rows = select_rows_v2(task, manifest, max_per_dataset, max_per_nonverbal)
     print(f"\n[*] {task}_v2 | kayıt: {len(rows)} | artırma: {augment}")
 
     jobs = (delayed(process_row_v2)(task, r, lab, augment) for r, lab in rows)
@@ -165,6 +168,7 @@ def extract_task_v2(task, augment=True, max_per_dataset=300, n_jobs=-1):
         "classes": sorted(set(arrays["y"].tolist())),
         "augmented": bool(augment),
         "max_per_dataset": max_per_dataset if task == "human" else None,
+        "max_per_nonverbal": max_per_nonverbal if task == "human" else None,
         "test_conditions": list(TEST_CONDITIONS),
         "eval_only_datasets": sorted(EVAL_ONLY_DATASETS & set(arrays["dataset"].tolist())),
     }
@@ -182,10 +186,13 @@ def main():
     p.add_argument("--no-augment", action="store_true", help="Artırmayı kapat")
     p.add_argument("--max-per-dataset", type=int, default=300,
                    help="insan-sesi görevinde veri seti başına en fazla insan kaydı")
+    p.add_argument("--max-per-nonverbal", type=int, default=1500,
+                   help="insan-sesi görevinde sözsüz ses veri seti başına en fazla kayıt")
     p.add_argument("--jobs", type=int, default=-1)
     args = p.parse_args()
     for t in TASKS if args.task == "all" else (args.task,):
-        extract_task_v2(t, not args.no_augment, args.max_per_dataset, args.jobs)
+        extract_task_v2(t, not args.no_augment, args.max_per_dataset,
+                        args.max_per_nonverbal, args.jobs)
 
 
 if __name__ == "__main__":

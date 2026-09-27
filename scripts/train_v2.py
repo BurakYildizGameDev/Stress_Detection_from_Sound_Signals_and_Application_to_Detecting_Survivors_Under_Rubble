@@ -87,7 +87,7 @@ def evaluate(task, model, d):
     def summ(mask):
         return summarize(task, d["y"][mask], pred[mask], labels)
 
-    report = {"corpus": {}, "by_synth": {}, "external": {}}
+    report = {"corpus": {}, "by_synth": {}, "by_dataset": {}, "external": {}}
     for cond in conditions:
         at = test & (d["condition"] == cond)
         report["corpus"][cond] = summ(at & ~external)
@@ -97,6 +97,14 @@ def evaluate(task, model, d):
             report["by_synth"][cond][synth] = {
                 "n": int(m.sum()),
                 "accuracy": float(np.mean(pred[m] == d["y"][m])),
+                "predictions": prediction_counts(d["y"][m], pred[m]),
+            }
+        report["by_dataset"][cond] = {}
+        for ds in sorted(set(d["dataset"][at & ~external])):
+            m = at & ~external & (d["dataset"] == ds) & (d["synth"] == "none")
+            report["by_dataset"][cond][ds] = {
+                "n": int(m.sum()),
+                "accuracy": float(np.mean(pred[m] == d["y"][m])) if m.any() else float("nan"),
                 "predictions": prediction_counts(d["y"][m], pred[m]),
             }
         for ds in sorted(set(d["dataset"][at & external])):
@@ -117,6 +125,10 @@ def print_report(task, report):
     for cond, s in report["corpus"].items():
         rec = "  ".join(f"{lab} {c['recall']:.2f}" for lab, c in s["per_class"].items())
         print(f"  {cond:24s} macro-F1 {s['macro_f1']:.3f} | recall: {rec}")
+    print("\nVeri setine göre doğruluk (gerçek kayıtlar, clean / severe):")
+    for ds, r in report["by_dataset"].get("clean", {}).items():
+        sev = report["by_dataset"].get("rubble_physical_severe", {}).get(ds, {})
+        print(f"  {ds:12s} n={r['n']:4d}  {r['accuracy']:.3f} / {sev.get('accuracy', float('nan')):.3f}")
     for ds, per_cond in report["external"].items():
         print(f"\nDış gerçek veri: {ds}")
         for cond, r in per_cond.items():

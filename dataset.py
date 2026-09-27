@@ -8,6 +8,7 @@ Etiketler dosya adındaki anahtar kelimelerden değil, her veri setinin kendi
 isimlendirme şemasından okunur. Her kayıt en fazla bir acil durum sınıfına düşer.
 """
 import csv
+import functools
 import hashlib
 import os
 import random
@@ -133,6 +134,55 @@ def _esc50(name, _):
     return f"clip{m.group(2)}", f"esc{target}", name[:-4]
 
 
+def _esc50_vocal(name, _):
+    # ESC-50'nin insan kaynaklı sınıfları: enkaz altında nefes, öksürük, horlama
+    # ve bebek ağlaması da yaşam belirtisidir, bu yüzden "human" sayılır.
+    m = re.fullmatch(r"(\d)-(\d+)-([A-Z])-(\d+)\.wav", name)
+    if not m:
+        raise Skip("ESC-50 şemasına uymuyor")
+    target = int(m.group(4))
+    if target not in ESC50_HUMAN_VOCAL:
+        raise Skip("insan sesi olmayan ESC-50 sınıfı (esc50'de)")
+    return f"clip{m.group(2)}", ESC50_HUMAN_VOCAL[target], name[:-4]
+
+
+def _vocalsound(name, _):
+    # f0003_0_cough.wav: [cinsiyet f|m|o][konuşmacı]_[oturum]_[tür]
+    m = re.fullmatch(r"([fmo]\d+)_(\d+)_(laughter|sigh|cough|throatclearing|sneeze|sniff)\.wav", name)
+    if not m:
+        raise Skip("VocalSound şemasına uymuyor")
+    return m.group(1), m.group(3), name[:-4]
+
+
+@functools.lru_cache(maxsize=None)
+def _nonspeech7k_metadata(base):
+    """dosya adı -> (kaynak kaydı, sınıf). Metadata CSV'leri veri klasöründedir."""
+    meta = {}
+    for f in sorted(os.listdir(base)) if os.path.isdir(base) else []:
+        if not f.lower().endswith(".csv"):
+            continue
+        with open(os.path.join(base, f), newline="", encoding="utf-8-sig") as fh:
+            rows = csv.reader(fh)
+            next(rows, None)
+            for row in rows:
+                if len(row) >= 8:
+                    host = row[7].split("//")[-1].split(".")[0]    # freesound / youtube / aigei
+                    meta[row[0]] = (f"{host}{row[1]}", row[4].strip().lower())
+    return meta
+
+
+def _nonspeech7k(name, _):
+    # Etiket ve kaynak kaydı metadata'dan gelir. Resmî train/test bölmesi bazı
+    # kaynak kayıtlarını iki tarafa da koyduğu için kullanılmaz; aynı kaynaktan
+    # kesilen parçalar tek grup ("konuşmacı") sayılır.
+    meta = _nonspeech7k_metadata(dataset_dir("nonspeech7k"))
+    if name not in meta:
+        raise Skip("Nonspeech7k metadata'sında yok")
+    source, label = meta[name]
+    label = {"yawm": "yawn"}.get(label, label)          # test CSV'sindeki yazım hatası
+    return source, label, name[:-4]
+
+
 def _vivae(name, _):
     # S04_pain_moderate_10.wav: konuşmacı_duygu_şiddet_öğe. Ağrı için şiddet
     # etikete katılır (pain_low ... pain_peak), diğer duygular şiddetsiz.
@@ -164,6 +214,9 @@ class DatasetSpec:
     # True: bütün kayıtlar test bölmesine düşer; eğitimde hiç kullanılmaz.
     # Gerçek fısıltı/inleme verisi az olduğu için yalnızca dış doğrulama içindir.
     eval_only: bool = False
+    # True: sözsüz insan sesi (öksürük, çığlık, iç çekme...). Yalnızca v2 insan-sesi
+    # modeline girer; fısıltı/inleme sentezi için kaynak olarak kullanılmaz.
+    nonverbal: bool = False
 
 
 DATASETS = {
@@ -174,11 +227,19 @@ DATASETS = {
     "savee":     DatasetSpec("human/savee",     "human",     "research only",             _savee),
     "jl_corpus": DatasetSpec("human/jl_corpus", "human",     "CC0",                       _jl_corpus),
     "esc50":     DatasetSpec("non-human/esc50", "non_human", "CC BY-NC 3.0",              _esc50),
+    "esc50_vocal": DatasetSpec("non-human/esc50", "human",   "CC BY-NC 3.0",              _esc50_vocal, nonverbal=True),
+    "vocalsound": DatasetSpec("human/vocalsound", "human",   "CC BY-SA 4.0",              _vocalsound, nonverbal=True),
+    "nonspeech7k": DatasetSpec("human/nonspeech7k", "human", "CC BY-NC-SA 4.0",           _nonspeech7k, nonverbal=True),
     "vivae":     DatasetSpec("human/vivae",     "human",     "CC BY-NC 4.0",              _vivae, eval_only=True),
     "field":     DatasetSpec("human/field",     "human",     "kayda göre değişir",        _field, eval_only=True),
 }
 
 EVAL_ONLY_DATASETS = {k for k, v in DATASETS.items() if v.eval_only}
+NONVERBAL_DATASETS = {k for k, v in DATASETS.items() if v.nonverbal}
+# v1 modelleri bunları hiç görmez (v1 raporları tekrarlanabilir kalsın)
+V1_EXCLUDED_DATASETS = EVAL_ONLY_DATASETS | NONVERBAL_DATASETS
+# Resmî fold'u olan veri setleri: 5. fold test
+FOLD_SPLIT_DATASETS = {"esc50", "esc50_vocal"}
 
 
 def dataset_dir(name):
@@ -238,9 +299,9 @@ def scan_dataset(name):
                 speaker=speaker,
                 recording_id=rec_id,
                 emotion=emotion,
-                # v1 modelleri eval_only veri setlerini hiç görmez
+                # v1 modelleri eval_only / sözsüz veri setlerini hiç görmez
                 emergency_class=EMOTION_TO_CLASS.get(emotion, "")
-                if spec.role == "human" and not spec.eval_only else "",
+                if spec.role == "human" and name not in V1_EXCLUDED_DATASETS else "",
                 emergency_class_v2=EMOTION_TO_CLASS_V2.get(emotion, "") if spec.role == "human" else "",
             ))
     return records, skipped
@@ -257,7 +318,7 @@ def assign_splits(records, test_fraction=TEST_SPEAKER_FRACTION, seed=SPLIT_SEED)
 
     test_groups = set()
     for ds, speakers in sorted(by_dataset.items()):
-        if ds == "esc50" or ds in EVAL_ONLY_DATASETS:
+        if ds in FOLD_SPLIT_DATASETS or ds in EVAL_ONLY_DATASETS:
             continue
         speakers = sorted(speakers)
         if len(speakers) < 2:
@@ -267,7 +328,7 @@ def assign_splits(records, test_fraction=TEST_SPEAKER_FRACTION, seed=SPLIT_SEED)
         test_groups.update(f"{ds}/{s}" for s in rng.sample(speakers, n_test))
 
     for r in records:
-        if r.dataset == "esc50":
+        if r.dataset in FOLD_SPLIT_DATASETS:
             r.split = "test" if r.path.rsplit("/", 1)[-1].startswith("5-") else "train"
         elif r.dataset in EVAL_ONLY_DATASETS:
             r.split = "test"
