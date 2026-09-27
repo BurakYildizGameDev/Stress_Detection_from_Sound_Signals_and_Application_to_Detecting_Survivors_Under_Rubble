@@ -37,6 +37,8 @@ DEFAULT_OUT_DIR = os.path.join(ROOT, "firmware", "include")
 # Bu düğüm sayısının üstündeki modeller ESP32-S3 için gerçekçi değil
 # (if-else kodu kabaca düğüm başına 15-20 bayt flash tutar).
 EMBEDDED_NODE_WARN = 100_000
+# Bundan büyük başlık dosyası --allow-large olmadan yazılmaz (GitHub dosya sınırı 100 MB).
+MAX_HEADER_MB = 50
 
 _IDENT_RE = re.compile(r"^[A-Za-z_][A-Za-z0-9_]*$")
 
@@ -186,7 +188,10 @@ def main():
     ap.add_argument("--name", required=True, help="C önekleri için model adı (ör. human_detector)")
     ap.add_argument("--out", default=DEFAULT_OUT_DIR, help="çıktı klasörü (varsayılan: firmware/include)")
     ap.add_argument("--threshold", type=float, default=None,
-                    help="karar eşiği; verilmezse model .json'undaki human_threshold kullanılır")
+                    help="karar eşiği; verilmezse model .json'undaki human_threshold "
+                         "ya da emergency_threshold kullanılır")
+    ap.add_argument("--allow-large", action="store_true",
+                    help=f"{MAX_HEADER_MB} MB'tan büyük başlık dosyasını da yaz")
     args = ap.parse_args()
 
     rf = joblib.load(args.model)
@@ -198,7 +203,10 @@ def main():
     if os.path.exists(meta_path):
         with open(meta_path, encoding="utf-8") as f:
             meta = json.load(f)
-    threshold = args.threshold if args.threshold is not None else meta.get("human_threshold")
+    threshold = args.threshold
+    if threshold is None:
+        threshold = next((meta[k] for k in ("human_threshold", "emergency_threshold")
+                          if meta.get(k) is not None), None)
 
     n_nodes = sum(e.tree_.node_count for e in rf.estimators_)
     if n_nodes > EMBEDDED_NODE_WARN:
@@ -209,6 +217,10 @@ def main():
     code = export_random_forest_to_c(rf, model_name=args.name, threshold=threshold,
                                      feature_spec=meta.get("feature_spec"))
 
+    size_mb = len(code.encode("utf-8")) / 1e6
+    if size_mb > MAX_HEADER_MB and not args.allow_large:
+        sys.exit(f"Başlık dosyası {size_mb:.0f} MB; yazılmadı (sınır {MAX_HEADER_MB} MB, "
+                 "yine de yazmak için --allow-large).")
     os.makedirs(args.out, exist_ok=True)
     out_path = os.path.join(args.out, f"{args.name}_model.h")
     with open(out_path, "w", encoding="utf-8", newline="\n") as f:
