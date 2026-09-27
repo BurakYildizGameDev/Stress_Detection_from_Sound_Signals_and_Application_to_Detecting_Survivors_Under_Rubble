@@ -1,0 +1,212 @@
+{
+  "berlin": {
+    "n": 652,
+    "accuracy": 0.7929447852760736,
+    "macro_f1": 0.7784071598504588,
+    "false_alarm_rate": 0.028409090909090908,
+    "miss_rate": 0.4166666666666667,
+    "per_class": {
+      "human": {
+        "precision": 0.9459459459459459,
+        "recall": 0.5833333333333334,
+        "f1": 0.7216494845360825,
+        "support": 300
+      },
+      "non_human": {
+        "precision": 0.7323340471092077,
+        "recall": 0.9715909090909091,
+        "f1": 0.8351648351648352,
+        "support": 352
+      }
+    },
+    "labels": [
+      "human",
+      "non_human"
+    ],
+    "confusion_matrix": [
+      [
+        175,
+        125
+      ],
+      [
+        10,
+        342
+      ]
+    ]
+  },
+  "jl_corpus": {
+    "n": 652,
+    "accuracy": 0.9754601226993865,
+    "macro_f1": 0.9753578683800255,
+    "false_alarm_rate": 0.036931818181818184,
+    "miss_rate": 0.01,
+    "per_class": {
+      "human": {
+        "precision": 0.9580645161290322,
+        "recall": 0.99,
+        "f1": 0.9737704918032787,
+        "support": 300
+      },
+      "non_human": {
+        "precision": 0.9912280701754386,
+        "recall": 0.9630681818181818,
+        "f1": 0.9769452449567724,
+        "support": 352
+      }
+    },
+    "labels": [
+      "human",
+      "non_human"
+    ],
+    "confusion_matrix": [
+      [
+        297,
+        3
+      ],
+      [
+        13,
+        339
+      ]
+    ]
+  },
+  "ravdess": {
+    "n": 652,
+    "accuracy": 0.9309815950920245,
+    "macro_f1": 0.930244998395207,
+    "false_alarm_rate": 0.04261363636363636,
+    "miss_rate": 0.1,
+    "per_class": {
+      "human": {
+        "precision": 0.9473684210526315,
+        "recall": 0.9,
+        "f1": 0.9230769230769231,
+        "support": 300
+      },
+      "non_human": {
+        "precision": 0.9182561307901907,
+        "recall": 0.9573863636363636,
+        "f1": 0.9374130737134909,
+        "support": 352
+      }
+    },
+    "labels": [
+      "human",
+      "non_human"
+    ],
+    "confusion_matrix": [
+      [
+        270,
+        30
+      ],
+      [
+        15,
+        337
+      ]
+    ]
+  },
+  "savee": {
+    "n": 652,
+    "accuracy": 0.9739263803680982,
+    "macro_f1": 0.9738421419047283,
+    "false_alarm_rate": 0.045454545454545456,
+    "miss_rate": 0.0033333333333333335,
+    "per_class": {
+      "human": {
+        "precision": 0.9492063492063492,
+        "recall": 0.9966666666666667,
+        "f1": 0.9723577235772358,
+        "support": 300
+      },
+      "non_human": {
+        "precision": 0.9970326409495549,
+        "recall": 0.9545454545454546,
+        "f1": 0.9753265602322206,
+        "support": 352
+      }
+    },
+    "labels": [
+      "human",
+      "non_human"
+    ],
+    "confusion_matrix": [
+      [
+        299,
+        1
+      ],
+      [
+        16,
+        336
+      ]
+    ]
+  },
+  "subesco": {
+    "n": 652,
+    "accuracy": 0.848159509202454,
+    "macro_f1": 0.8411458525600797,
+    "false_alarm_rate": 0.019886363636363636,
+    "miss_rate": 0.30666666666666664,
+    "per_class": {
+      "human": {
+        "precision": 0.9674418604651163,
+        "recall": 0.6933333333333334,
+        "f1": 0.8077669902912621,
+        "support": 300
+      },
+      "non_human": {
+        "precision": 0.7894736842105263,
+        "recall": 0.9801136363636364,
+        "f1": 0.8745247148288974,
+        "support": 352
+      }
+    },
+    "labels": [
+      "human",
+      "non_human"
+    ],
+    "confusion_matrix": [
+      [
+        208,
+        92
+      ],
+      [
+        7,
+        345
+      ]
+    ]
+  },
+  "tess": {
+    "n": 652,
+    "accuracy": 0.9233128834355828,
+    "macro_f1": 0.9224695585996956,
+    "false_alarm_rate": 0.048295454545454544,
+    "miss_rate": 0.11,
+    "per_class": {
+      "human": {
+        "precision": 0.9401408450704225,
+        "recall": 0.89,
+        "f1": 0.9143835616438356,
+        "support": 300
+      },
+      "non_human": {
+        "precision": 0.9103260869565217,
+        "recall": 0.9517045454545454,
+        "f1": 0.9305555555555556,
+        "support": 352
+      }
+    },
+    "labels": [
+      "human",
+      "non_human"
+    ],
+    "confusion_matrix": [
+      [
+        267,
+        33
+      ],
+      [
+        17,
+        335
+      ]
+    ]
+  }
+}
