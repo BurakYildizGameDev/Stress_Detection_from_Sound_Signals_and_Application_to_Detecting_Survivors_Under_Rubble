@@ -129,11 +129,11 @@ def export_random_forest_to_c(rf_model, class_names=None, model_name="tinyml_mod
     c.append(f" * Ağaç: {n_estimators}, düğüm: {n_nodes}, öznitelik: {n_features}, sınıf: {n_classes}")
     if feature_spec:
         c.append(f" * Öznitelikler: {feature_spec.get('desc', '')}")
-    c.append(" * Bağımlılık yok (C99 / C++11). Elle düzenlemeyin.")
+    c.append(" * Bağımlılık yok (C99 / C++11, #include bile yok). Elle düzenlemeyin.")
     c.append(" */")
     c.append(f"#ifndef {guard}")
     c.append(f"#define {guard}")
-    c.append("\n#include <string.h>\n")
+    c.append("")
     c.append(f"#define {prefix}_NUM_FEATURES {n_features}")
     c.append(f"#define {prefix}_NUM_CLASSES {n_classes}")
     c.append(f"#define {prefix}_NUM_TREES {n_estimators}")
@@ -157,8 +157,7 @@ def export_random_forest_to_c(rf_model, class_names=None, model_name="tinyml_mod
     c.append(f"/* features: {n_features} float; out_probabilities: {n_classes} float veya NULL.")
     c.append("   Dönüş: en olası sınıfın indeksi. */")
     c.append(f"static int {model_name}_predict(const float* features, float* out_probabilities) {{")
-    c.append(f"    float votes[{n_classes}];")
-    c.append("    memset(votes, 0, sizeof(votes));")
+    c.append(f"    float votes[{n_classes}] = {{0}};")
     for i in range(n_estimators):
         c.append(f"    {model_name}_tree_{i}(features, votes);")
     c.append(f"""
