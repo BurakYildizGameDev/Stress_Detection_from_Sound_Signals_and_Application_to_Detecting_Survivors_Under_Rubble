@@ -53,6 +53,7 @@ static void print_line(const char* line) {
     if (serial_lock) xSemaphoreGive(serial_lock);
 }
 
+#ifndef RUBBLE_SIM_SCENARIO
 static void fatal(const char* msg) {
     char buf[160];
     snprintf(buf, sizeof(buf), "{\"type\":\"error\",\"message\":\"%s\"}", msg);
@@ -61,6 +62,7 @@ static void fatal(const char* msg) {
         delay(5000);
     }
 }
+#endif
 
 // Pencere sonucunu alarm takibinden geçirir, olayları yazar, alarmda LED'i yakar.
 static void handle_result(const rubble_result_t* r, uint32_t inference_us) {
