@@ -77,7 +77,8 @@ def make_model_v2(task, class_weight="cost"):
 TARGET_FALSE_ALARM = 0.20
 
 
-def choose_human_threshold(d, train, target_fa=TARGET_FALSE_ALARM, val_fraction=0.15, seed=42):
+def choose_human_threshold(d, train, target_fa=TARGET_FALSE_ALARM, val_fraction=0.15, seed=42,
+                           make_model=lambda: make_model_v2("human"), verbose=True):
     """İnsan-sesi eşiğini test verisine bakmadan seçer: eğitim gruplarının bir
     kısmı doğrulamaya ayrılır, model onlarsız eğitilir ve doğrulamadaki insan dışı
     orijinal kliplerde yanlış alarm oranını target_fa altında tutan en düşük eşik
@@ -87,7 +88,7 @@ def choose_human_threshold(d, train, target_fa=TARGET_FALSE_ALARM, val_fraction=
     val_groups = set(rng.choice(groups, size=max(1, int(len(groups) * val_fraction)), replace=False))
     is_val = np.isin(d["group"], sorted(val_groups)) & train
     fit = train & ~is_val
-    model = make_model_v2("human").fit(d["X"][fit], d["y"][fit])
+    model = make_model().fit(d["X"][fit], d["y"][fit])
     val = is_val & (d["transform"] == "original") & (d["synth"] == "none")
     p_human = model.predict_proba(d["X"][val])[:, list(model.classes_).index("human")]
     y = d["y"][val]
@@ -95,8 +96,9 @@ def choose_human_threshold(d, train, target_fa=TARGET_FALSE_ALARM, val_fraction=
     for t in np.round(np.arange(0.05, 1.0, 0.01), 2):
         if np.mean(p_human[neg] >= t) <= target_fa:
             rec = float(np.mean(p_human[pos] >= t))
-            print(f"eşik {t:.2f}: doğrulamada yanlış alarm {np.mean(p_human[neg] >= t):.3f}, "
-                  f"insan recall {rec:.3f} (n_neg={neg.sum()}, n_pos={pos.sum()})")
+            if verbose:
+                print(f"eşik {t:.2f}: doğrulamada yanlış alarm {np.mean(p_human[neg] >= t):.3f}, "
+                      f"insan recall {rec:.3f} (n_neg={neg.sum()}, n_pos={pos.sum()})")
             return float(t)
     return 0.5
 

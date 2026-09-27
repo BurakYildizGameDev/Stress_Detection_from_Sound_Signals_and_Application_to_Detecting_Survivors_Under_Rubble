@@ -1,0 +1,57 @@
+{
+  "task": "human_esp",
+  "labels": [
+    "human",
+    "non_human"
+  ],
+  "feature_spec": {
+    "version": 3,
+    "sr": 22050,
+    "n_features": 33,
+    "clip_sec": 2.0,
+    "loudness_normalized": true,
+    "desc": "RMS-normalized: 13 MFCC mean + 13 MFCC std + ZCR + Flatness(mean/std) + Rolloff + Flux + HNR + SubBandRatio"
+  },
+  "sklearn_version": "1.8.0",
+  "created": "2026-09-27T22:47:40+00:00",
+  "params": {
+    "n_estimators": 10,
+    "max_depth": 12,
+    "min_samples_leaf": 5,
+    "class_weight": "balanced"
+  },
+  "nodes": 15152,
+  "flash_bytes": 235770,
+  "flash_measured": true,
+  "human_threshold": 0.45,
+  "metrics": {
+    "clean": {
+      "human_recall": 0.8056618209640398,
+      "false_alarm": 0.13352272727272727,
+      "vivae_recall": 0.5033333333333333,
+      "balanced_accuracy": 0.8360695468456563
+    },
+    "rubble_physical_medium": {
+      "human_recall": 0.7712318286151492,
+      "false_alarm": 0.23011363636363635,
+      "vivae_recall": 0.5166666666666667,
+      "balanced_accuracy": 0.7705590961257565
+    }
+  },
+  "reference_v2_metrics": {
+    "clean": {
+      "human_recall": 0.8752869166029075,
+      "false_alarm": 0.1846590909090909,
+      "vivae_recall": 0.7033333333333334,
+      "balanced_accuracy": 0.8453139128469083
+    },
+    "rubble_physical_medium": {
+      "human_recall": 0.8064269319051263,
+      "false_alarm": 0.24431818181818182,
+      "vivae_recall": 0.5733333333333334,
+      "balanced_accuracy": 0.7810543750434722
+    }
+  },
+  "c_name": "human_detector",
+  "report": "reports/esp_model_sweep.json"
+}
