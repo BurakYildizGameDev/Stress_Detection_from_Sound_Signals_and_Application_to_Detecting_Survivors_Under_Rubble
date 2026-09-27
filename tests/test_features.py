@@ -35,9 +35,17 @@ def test_emergency_features_resample_input():
     assert from_22k[-1] == pytest.approx(native[-1], rel=0.05)
 
 
-def test_saved_emergency_features_width():
-    X_path = os.path.join(os.path.dirname(os.path.dirname(os.path.abspath(__file__))),
-                          "features", "X_emergency.npy")
-    if not os.path.exists(X_path):
-        pytest.skip("features/X_emergency.npy yok")
-    assert np.load(X_path).shape[1] == EMERGENCY_N_FEATURES
+
+def test_augmentations_and_conditions_keep_audio_valid():
+    from augment import AUGMENTATIONS, CONDITIONS
+    y = tone(HUMAN_SR)
+    fns = [*AUGMENTATIONS["human"].values(), *AUGMENTATIONS["non_human"].values(), *CONDITIONS.values()]
+    for fn in fns:
+        out = fn(y, HUMAN_SR, np.random.default_rng(0))
+        assert out.shape == y.shape and np.all(np.isfinite(out))
+
+
+def test_lowpass_attenuates_high_frequencies():
+    from augment import lowpass
+    high = tone(HUMAN_SR, freq=4000)
+    assert np.sqrt(np.mean(lowpass(high, HUMAN_SR, 400) ** 2)) < 0.01

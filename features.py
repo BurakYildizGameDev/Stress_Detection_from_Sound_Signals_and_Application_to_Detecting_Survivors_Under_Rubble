@@ -15,6 +15,19 @@ N_MFCC = 13
 HUMAN_N_FEATURES = 2 * N_MFCC + 2      # 28
 EMERGENCY_N_FEATURES = N_MFCC + 2      # 15
 
+# Öznitelik tanımının kimliği. Aşağıdaki fonksiyonlardan biri değişirse
+# ilgili sürüm artırılmalı; pipeline, model metadata'sındaki spec ile bunu
+# karşılaştırır ve uyuşmayan modeli yüklemez. clip_sec: eğitimde kaydın ilk
+# kaç saniyesinin kullanıldığı (None = tamamı).
+FEATURE_SPECS = {
+    "human": {"version": 1, "sr": HUMAN_SR, "n_features": HUMAN_N_FEATURES,
+              "clip_sec": 2.0,
+              "desc": "13 MFCC mean + 13 MFCC std + ZCR + RMS"},
+    "emergency": {"version": 1, "sr": EMERGENCY_SR, "n_features": EMERGENCY_N_FEATURES,
+                  "clip_sec": None,
+                  "desc": "13 MFCC mean + RMS + spectral centroid"},
+}
+
 
 def _resample(y, sr, target_sr):
     if sr == target_sr:
@@ -53,3 +66,6 @@ def emergency_features(y, sr=EMERGENCY_SR):
         np.mean(librosa.feature.rms(y=y)),
         np.mean(librosa.feature.spectral_centroid(y=y, sr=EMERGENCY_SR)),
     ]).astype(np.float32)
+
+
+FEATURE_FUNCS = {"human": human_features, "emergency": emergency_features}

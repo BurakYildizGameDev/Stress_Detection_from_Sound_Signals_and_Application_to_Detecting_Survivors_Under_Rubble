@@ -9,9 +9,11 @@ Kullanım:
     python scripts/download_data.py ravdess tess # sadece seçilenler
     python scripts/download_data.py --list
 
-Klasör yapısı:
+Klasör yapısı ve lisanslar dataset.py'deki DATASETS tablosundan gelir:
     data/human/{berlin,ravdess,tess,subesco,savee,jl_corpus}/
     data/non-human/esc50/
+
+Sonraki adım: python scripts/build_manifest.py
 """
 import argparse
 import json
@@ -22,57 +24,44 @@ import tempfile
 import urllib.request
 import zipfile
 
-ROOT = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
-DATA = os.path.join(ROOT, "data")
+sys.path.insert(0, os.path.dirname(os.path.dirname(os.path.abspath(__file__))))
+
+from dataset import DATASETS as LAYOUT, ROOT, dataset_dir
 
 TESS_DOI = "doi:10.5683/SP2/E8H2MF"
 BOREALIS = "https://borealisdata.ca/api"
 
 DATASETS = {
     "ravdess": {
-        "dest": "human/ravdess",
         "url": "https://zenodo.org/records/1188976/files/Audio_Song_Actors_01-24.zip?download=1",
-        "license": "CC BY-NC-SA 4.0",
         "info": "RAVDESS (song alt kümesi), Livingstone & Russo 2018",
     },
     "berlin": {
-        "dest": "human/berlin",
         "url": "http://emodb.bilderbar.info/download/download.zip",
         "zip_subdir": "wav",
-        "license": "serbest kullanım, atıf gerekli",
         "info": "Berlin EMO-DB, Burkhardt vd. 2005",
     },
     "subesco": {
-        "dest": "human/subesco",
         "url": "https://zenodo.org/records/4526477/files/SUBESCO.zip?download=1",
-        "license": "CC BY 4.0",
         "info": "SUST Bangla Emotional Speech Corpus (~1.7 GB)",
     },
     "tess": {
-        "dest": "human/tess",
         "custom": "tess",
-        "license": "CC BY-NC 4.0",
         "info": "Toronto Emotional Speech Set (Borealis, 2800 dosya)",
     },
     "esc50": {
-        "dest": "non-human/esc50",
         "url": "https://github.com/karoldvl/ESC-50/archive/master.zip",
         "zip_subdir": "audio",
-        "license": "CC BY-NC 3.0",
         "info": "ESC-50 çevresel ses veri seti",
     },
     "savee": {
-        "dest": "human/savee",
         "manual": "Kayıt gerektirir: http://kahlan.eps.surrey.ac.uk/savee/ "
                   "(veya Kaggle: ejlok1/surrey-audiovisual-expressed-emotion-savee). "
                   "wav dosyalarını data/human/savee/ altına koyun.",
-        "license": "yalnızca araştırma amaçlı",
         "info": "Surrey Audio-Visual Expressed Emotion",
     },
     "jl_corpus": {
-        "dest": "human/jl_corpus",
         "manual": "Kaggle: tli725/jl-corpus. wav dosyalarını data/human/jl_corpus/ altına koyun.",
-        "license": "CC0",
         "info": "JL-Corpus (Yeni Zelanda İngilizcesi)",
     },
 }
@@ -150,8 +139,8 @@ def fetch_tess(dest):
 
 
 def fetch(name, spec, force=False):
-    dest = os.path.join(DATA, spec["dest"])
-    print(f"[{name}] {spec['info']} — lisans: {spec['license']}")
+    dest = dataset_dir(name)
+    print(f"[{name}] {spec['info']} — lisans: {LAYOUT[name].license}")
 
     if has_wavs(dest) and not force:
         print(f"  zaten var: {os.path.relpath(dest, ROOT)} (yeniden indirmek için --force)")
@@ -172,19 +161,19 @@ def fetch(name, spec, force=False):
 
 
 def main():
+    if hasattr(sys.stdout, "reconfigure"):
+        sys.stdout.reconfigure(encoding="utf-8")
     ap = argparse.ArgumentParser(description=__doc__,
                                  formatter_class=argparse.RawDescriptionHelpFormatter)
     ap.add_argument("names", nargs="*", help="veri seti adları (boş = hepsi)")
     ap.add_argument("--list", action="store_true", help="veri setlerini listele")
     ap.add_argument("--force", action="store_true", help="var olsa da yeniden indir")
     args = ap.parse_args()
-    if hasattr(sys.stdout, "reconfigure"):
-        sys.stdout.reconfigure(encoding="utf-8")
 
     if args.list:
         for k, v in DATASETS.items():
             kind = "elle" if "manual" in v else "otomatik"
-            print(f"{k:10s} {kind:9s} {v['license']:28s} {v['info']}")
+            print(f"{k:10s} {kind:9s} {LAYOUT[k].license:28s} {v['info']}")
         return
 
     unknown = set(args.names) - set(DATASETS)

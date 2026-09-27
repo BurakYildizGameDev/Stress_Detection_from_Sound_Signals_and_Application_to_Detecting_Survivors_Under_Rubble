@@ -3,6 +3,7 @@
 scikit-learn==1.8.0
 numpy>=1.26,<3
 librosa>=0.10.2,<0.12
+scipy>=1.11
 numba>=0.60
 soundfile>=0.12
 joblib>=1.3
