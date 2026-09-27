@@ -3,7 +3,9 @@
 > **Durum: prototip, donanımda test edilmedi.** Karar mantığı, alarm takibi ve
 > modeller bilgisayarda derlenip Python ile birebir karşılaştırılarak test edildi.
 > Mikrofon ve FreeRTOS kısmı (`src/main.cpp`) yalnızca CI'da derleniyor
-> (`.github/workflows/ci.yml`), hiç çalıştırılmadı. Öznitelik
+> (`.github/workflows/ci.yml`), hiç çalıştırılmadı. Son derleme: flash
+> 1.08 MB / 3 MB (%34.5, iki model + Arduino çekirdeği), statik RAM 23 KB (%7.1);
+> çalışma anında ayrıca ~176 KB ses tamponu ayrılır. Öznitelik
 > çıkarımı henüz yok: firmware konuşma içeren pencereleri `unclassified` diye
 > raporlar, modelleri çağırmaz (bkz. [Eksikler](#eksikler)).
 
