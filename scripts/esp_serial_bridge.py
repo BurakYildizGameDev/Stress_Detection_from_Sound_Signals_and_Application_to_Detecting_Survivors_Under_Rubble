@@ -52,7 +52,9 @@ class EspBridge:
             for k in ("window", "state", "state_confidence", "human_prob", "emergency_prob"):
                 out[k] = msg[k]
         elif kind == "alarm":
-            start = now - timedelta(milliseconds=msg["t_ms"] - msg["episode_start_ms"])
+            # millis() 32 bit, ~49 günde taşar: farkı cihazdaki gibi modüler al
+            elapsed_ms = (msg["t_ms"] - msg["episode_start_ms"]) % 2**32
+            start = now - timedelta(milliseconds=elapsed_ms)
             out.update({"episode_start": iso(start), "windows": msg["windows"],
                         "states": msg["states"], "peak_emergency_prob": msg["peak_emergency_prob"]})
         else:  # episode_end

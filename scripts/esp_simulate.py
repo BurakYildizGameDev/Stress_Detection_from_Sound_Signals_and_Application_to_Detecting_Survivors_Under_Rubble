@@ -16,6 +16,7 @@ Seçenekler:
   --export-scenario  Wokwi senaryosu üret (firmware/include/sim_scenario.h):
                      pencerelerin öznitelikleri + C'nin beklenen sonuçları
   --report           özet JSON (ör. reports/esp_simulation.json)
+  --serial-out       cihazın seri çıktısı biçiminde satırlar (esp_serial_bridge --replay için)
 
 Kullanım:
     python scripts/esp_simulate.py samples/woman_scream.mp3
@@ -160,20 +161,28 @@ def print_table(results, events, sources):
         print(f"{r['window']:4d}  {src[:18]:18s} {r['status']:10s} {r['state']:8s} {hp:>6s} {ep:>6s}  {ev}")
 
 
-def to_dashboard(results, events, delay):
-    from scripts.esp_serial_bridge import EspBridge
-    bridge = EspBridge(device="ESP32-S3 (simülatör)")
-    bridge.handle_line(json.dumps({"type": "boot", "sample_rate": SR}))
+def serial_lines(results, events):
+    """Firmware'in seri çıktısı biçiminde satırlar: boot, olaylar, pencere başına status."""
+    lines = [json.dumps({"type": "boot", "mode": "simulator", "sample_rate": SR,
+                         "features": "python"}, separators=(",", ":"))]
     open_episode = 0
     for r, evs in zip(results, events):
         for e in evs:
-            bridge.handle_line(json.dumps(e))
+            lines.append(json.dumps(e, separators=(",", ":")))
             open_episode = e["episode"] if e["type"] == "detection" else (
                 0 if e["type"] == "episode_end" else open_episode)
-        bridge.handle_line(json.dumps({"type": "status", "t_ms": r["t_ms"], "windows": r["window"],
-                                       "last_rms": r["rms"], "last_status": r["status"],
-                                       "open_episode": open_episode}))
-        if delay:
+        lines.append(json.dumps({"type": "status", "t_ms": r["t_ms"] + 1000, "windows": r["window"],
+                                 "last_rms": round(r["rms"], 5), "last_status": r["status"],
+                                 "open_episode": open_episode}, separators=(",", ":")))
+    return lines
+
+
+def to_dashboard(results, events, delay):
+    from scripts.esp_serial_bridge import EspBridge
+    bridge = EspBridge(device="ESP32-S3 (simülatör)")
+    for line in serial_lines(results, events):
+        bridge.handle_line(line)
+        if delay and '"type":"status"' in line:
             time.sleep(delay)
     bridge.stopped()
 
@@ -248,6 +257,7 @@ def main():
     p.add_argument("--export-scenario", nargs="?", const=SCENARIO_PATH, default=None,
                    help=f"Wokwi senaryosu yaz (varsayılan {os.path.relpath(SCENARIO_PATH, ROOT)})")
     p.add_argument("--report", default=None, help="özet JSON dosyası")
+    p.add_argument("--serial-out", default=None, help="seri çıktı biçiminde satırları bu dosyaya yaz")
     args = p.parse_args()
 
     windows, sources, features, results, events, mismatches = simulate(args.audio, args.gap)
@@ -278,6 +288,10 @@ def main():
         with open(args.report, "w", encoding="utf-8") as f:
             json.dump(report, f, indent=2, ensure_ascii=False)
         print(f"-> {args.report}")
+    if args.serial_out:
+        with open(args.serial_out, "w", encoding="utf-8", newline="\n") as f:
+            f.write("\n".join(serial_lines(results, events)) + "\n")
+        print(f"-> {args.serial_out}")
     if args.export_scenario:
         desc = " ".join(os.path.relpath(a, ROOT).replace(os.sep, "/") for a in args.audio)
         export_scenario(args.export_scenario, results, features, sources, desc)

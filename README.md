@@ -464,7 +464,7 @@ and only sends events. Details: [firmware/README.md](firmware/README.md).
 | Part | State |
 |---|---|
 | C export of the Random Forests (`scripts/export_c_model.py`) | Compiled C matches `predict_proba` (max difference < 2e-7 on 18k test rows); two models can be linked together |
-| Small models (`scripts/train_esp.py`) | v2 models are 0.9M / 2.3M nodes (tens of MB of code). ESP models: 10 trees, depth 12, **230 KB + 421 KB** (flash measured by compiling for a 32-bit ARM target, not Xtensa) |
+| Small models (`scripts/train_esp.py`) | v2 models are 0.9M / 2.3M nodes (tens of MB of code). ESP models: 25 trees, depth 10 each, **414 KB + 670 KB** (model object size, compiled with `-Os` for a 32-bit ARM target as a proxy, not Xtensa). The size/depth/class-weight configuration is chosen on validation speakers (15% of train); the test split is evaluated once, for the chosen model only |
 | Decision + alarm logic (`firmware/lib/rubble_core`, C99) | Tested against `pipeline_v2` and `events.AlarmTracker` on the host |
 | Firmware (`firmware/src/main.cpp`) | I2S capture, FreeRTOS tasks, JSON over serial. Compiled in CI for ESP32-S3 (flash 1.08 MB of 3 MB, both models included), never run on a board |
 | Dashboard link (`scripts/esp_serial_bridge.py`) | Writes device events to the dashboard logs; `--replay` works without hardware |
@@ -489,10 +489,10 @@ Accuracy of the small models vs. full v2 (`reports/esp_model_sweep.json`):
 
 | | Full v2 | ESP |
 |---|---|---|
-| Human detector, balanced accuracy / false alarms | 0.845 / 0.185 | 0.836 / 0.134 |
-| Human detector, real non-verbal vocalisations (VIVAE) recall | **0.70** | **0.50** |
-| Emergency, macro-F1 clean / severe rubble | 0.80 / 0.45 | 0.77 / 0.50 |
-| Emergency, false alarms on normal speech | 0.23 | 0.14 |
+| Human detector, balanced accuracy / false alarms | 0.845 / 0.185 | 0.815 / 0.182 |
+| Human detector, real non-verbal vocalisations (VIVAE) recall | **0.70** | **0.53** |
+| Emergency, macro-F1 clean / severe rubble | 0.80 / 0.45 | 0.80 / 0.42 |
+| Emergency, false alarms on normal speech | 0.23 | 0.12 |
 
 The v2 cost weights (whisper ×8, moan ×6) made the small emergency models flag
 59–93% of normal speech, so the ESP models are trained without class weights.
@@ -522,8 +522,8 @@ These are stated openly on purpose:
    debris.
 8. **The ESP32 firmware is verified in simulation only and is incomplete.** It
    has never run on a board, cannot yet compute features on the device, and its
-   small models catch fewer real non-verbal vocalisations (0.50 vs 0.70); in the
-   host simulator birdsong is taken for whispering.
+   small models catch fewer real non-verbal vocalisations (0.53 vs 0.70); in the
+   host simulator a birdsong clip raises a false alarm.
 
 ---
 

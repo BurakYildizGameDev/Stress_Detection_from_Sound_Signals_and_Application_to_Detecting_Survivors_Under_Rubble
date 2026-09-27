@@ -16,65 +16,80 @@
     "desc": "RMS-normalized: 13 MFCC mean + Centroid + HNR + Flatness + SubBandRatio + Entropy + Flux"
   },
   "sklearn_version": "1.8.0",
-  "created": "2026-09-27T22:49:08+00:00",
+  "created": "2026-09-27T23:54:45+00:00",
   "params": {
-    "n_estimators": 10,
-    "max_depth": 12,
+    "n_estimators": 25,
+    "max_depth": 10,
     "min_samples_leaf": 5,
     "class_weight": "none"
   },
-  "nodes": 16292,
-  "flash_bytes": 431176,
+  "nodes": 23231,
+  "flash_bytes": 686506,
   "flash_measured": true,
   "human_threshold": null,
   "emergency_threshold": 0.45,
+  "selection": "validation groups (15% of train); test evaluated once",
+  "validation_metrics": {
+    "clean": {
+      "macro_f1": 0.7786346276164953,
+      "false_alarm": 0.1902439024390244,
+      "miss": 0.06769230769230769,
+      "n": 1180
+    },
+    "rubble": {
+      "macro_f1": 0.48339106273788257,
+      "false_alarm": 0.7414634146341463,
+      "miss": 0.08102564102564103,
+      "n": 1180
+    }
+  },
   "metrics": {
     "clean": {
-      "macro_f1": 0.7720401069794913,
-      "false_alarm": 0.13908450704225353,
-      "miss": 0.050268610897927855,
+      "macro_f1": 0.7997890318127593,
+      "false_alarm": 0.12147887323943662,
+      "miss": 0.043745203376822715,
       "recall": {
-        "normal": 0.8609154929577465,
-        "stress": 0.8713235294117647,
-        "panic": 0.3136842105263158,
-        "moan": 0.9552599758162031,
-        "whisper": 0.9144736842105263
+        "normal": 0.8785211267605634,
+        "stress": 0.8952205882352942,
+        "panic": 0.36,
+        "moan": 0.973397823458283,
+        "whisper": 0.9381578947368421
       }
     },
     "rubble_physical_mild": {
-      "macro_f1": 0.4636352417979726,
-      "false_alarm": 0.727112676056338,
-      "miss": 0.028012279355333843,
+      "macro_f1": 0.4473710476035608,
+      "false_alarm": 0.778169014084507,
+      "miss": 0.01841903300076746,
       "recall": {
-        "normal": 0.272887323943662,
-        "stress": 0.28125,
-        "panic": 0.05473684210526316,
-        "moan": 0.8524788391777509,
-        "whisper": 0.9657894736842105
+        "normal": 0.22183098591549297,
+        "stress": 0.29044117647058826,
+        "panic": 0.016842105263157894,
+        "moan": 0.905683192261185,
+        "whisper": 0.9592105263157895
       }
     },
     "rubble_physical_medium": {
-      "macro_f1": 0.5837733451715212,
-      "false_alarm": 0.4154929577464789,
-      "miss": 0.06178050652340752,
+      "macro_f1": 0.5520714179806026,
+      "false_alarm": 0.4084507042253521,
+      "miss": 0.06561780506523407,
       "recall": {
-        "normal": 0.5845070422535211,
-        "stress": 0.5882352941176471,
-        "panic": 0.0863157894736842,
-        "moan": 0.7956469165659008,
-        "whisper": 0.9644736842105263
+        "normal": 0.5915492957746479,
+        "stress": 0.46139705882352944,
+        "panic": 0.023157894736842106,
+        "moan": 0.8778718258766627,
+        "whisper": 0.9657894736842105
       }
     },
     "rubble_physical_severe": {
-      "macro_f1": 0.5011832175977885,
-      "false_alarm": 0.6144366197183099,
-      "miss": 0.059861857252494245,
+      "macro_f1": 0.4239808741216701,
+      "false_alarm": 0.704225352112676,
+      "miss": 0.0851880276285495,
       "recall": {
-        "normal": 0.3855633802816901,
-        "stress": 0.3400735294117647,
-        "panic": 0.05052631578947368,
-        "moan": 0.9600967351874244,
-        "whisper": 0.8802631578947369
+        "normal": 0.29577464788732394,
+        "stress": 0.19117647058823528,
+        "panic": 0.002105263157894737,
+        "moan": 0.9721886336154776,
+        "whisper": 0.875
       }
     }
   },

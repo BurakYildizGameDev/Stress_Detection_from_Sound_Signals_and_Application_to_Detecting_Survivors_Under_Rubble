@@ -126,9 +126,8 @@ def _decision_cases(n=400, seed=3):
         ep = np.round(rng.dirichlet(np.ones(5) * rng.choice([0.3, 1.0, 5.0])), 3)
         if rng.uniform() < 0.1:
             ep = np.array([0.3, 0.3, 0.2, 0.1, 0.1])  # eşitlik: argmax ilk sınıfı seçmeli
-        # float32 / float64 farkının karar değiştirebileceği tam sınır değerlerini atla
-        if abs((1.0 - ep[1]) - 0.45) < 1e-6:
-            continue
+        # Sınır durumları atlanmaz: en olası sınıf normal değilse emergency_prob >= 0.5
+        # (bkz. test_emergency_threshold_is_never_borderline), 0.45 eşiği sınırda olamaz.
         cases.append((rms, p_human, ep.tolist()))
     return cases
 
@@ -163,6 +162,24 @@ def test_decision_matches_pipeline_v2(harness, monkeypatch):
             assert float(conf) == pytest.approx(py["state_confidence"], abs=1e-6)
             assert float(eprob) == pytest.approx(py["emergency_prob"], abs=1e-6)
     assert seen == {"silence", "no_human", "DETECTED"}
+
+
+def test_emergency_threshold_is_never_borderline(harness):
+    # Olasılıklar toplamı 1 iken en olası sınıf normal değilse p(normal) <= 0.5, yani
+    # emergency_prob >= 0.5 > 0.45. Eşik hiçbir zaman sınırda olmadığı için
+    # float32 (C) / float64 (Python) farkı kararı değiştiremez; C'de de sınanır.
+    rng = np.random.default_rng(5)
+    probs = rng.dirichlet(np.ones(5) * 0.5, size=3000)
+    # sınır adayları: p(normal) en olası sınıfa eşit ya da çok yakın
+    near = rng.dirichlet(np.ones(5), size=500)
+    near[:, 1] = near.max(axis=1) - rng.uniform(0, 1e-6, size=500)
+    near /= near.sum(axis=1, keepdims=True)
+    probs = np.vstack([probs, near]).astype(np.float32)
+    stdin = "".join("D 0.05 0.9 0.1 " + " ".join(f"{v:.9g}" for v in p) + "\n" for p in probs)
+    for p, line in zip(probs, harness(stdin).strip().splitlines()):
+        status, state, is_em, _, _, eprob = line.split()
+        if int(state) != 1:  # normal dışı sınıf
+            assert float(eprob) >= 0.5 - 1e-6 and is_em == "1", p
 
 
 # ---------------------------------------------------------------- alarm takibi
@@ -315,6 +332,17 @@ def test_bridge_error_and_reboot(tmp_path):
     bridge.handle_line('{"type":"boot","sample_rate":22050}', later)
     ev = bridge.handle_line('{"type":"episode_end","t_ms":1,"episode":1,"windows":1,"alarmed":false}', later)
     assert ev[0]["episode"] == f"esp-{later:%Y%m%d-%H%M%S}-1"  # yeniden açılışta yeni önek
+
+
+def test_bridge_alarm_start_across_millis_wraparound(tmp_path):
+    # Bölüm 0xFFFFFFF0 ms'de açılıp alarm taşmadan sonra 0x20 ms'de gelirse
+    # geçen süre 48 ms'dir (49 gün değil).
+    bridge = EspBridge(events_path=str(tmp_path / "e.jsonl"), status_path=str(tmp_path / "s.json"),
+                       now=T0)
+    msg = {"type": "alarm", "t_ms": 0x20, "episode": 1, "episode_start_ms": 0xFFFFFFF0,
+           "windows": 3, "states": {"panic": 3}, "peak_emergency_prob": 0.9}
+    ev = bridge.handle_line(json.dumps(msg), T0)
+    assert T0 - datetime.fromisoformat(ev[0]["episode_start"]) == timedelta(milliseconds=48)
 
 
 # ---------------------------------------------------------------- model başlıkları
