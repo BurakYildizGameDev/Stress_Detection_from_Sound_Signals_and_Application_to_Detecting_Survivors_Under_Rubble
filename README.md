@@ -464,7 +464,7 @@ and only sends events. Details: [firmware/README.md](firmware/README.md).
 | C export of the Random Forests (`scripts/export_c_model.py`) | Compiled C matches `predict_proba` (max difference < 2e-7 on 18k test rows); two models can be linked together |
 | Small models (`scripts/train_esp.py`) | v2 models are 0.9M / 2.3M nodes (tens of MB of code). ESP models: 10 trees, depth 12, **230 KB + 421 KB** (flash measured by compiling for a 32-bit ARM target, not Xtensa) |
 | Decision + alarm logic (`firmware/lib/rubble_core`, C99) | Tested against `pipeline_v2` and `events.AlarmTracker` on the host |
-| Firmware (`firmware/src/main.cpp`) | I2S capture, FreeRTOS tasks, JSON over serial. Only compiled (CI), never run on a board |
+| Firmware (`firmware/src/main.cpp`) | I2S capture, FreeRTOS tasks, JSON over serial. Compiled in CI for ESP32-S3 (flash 1.08 MB of 3 MB, both models included), never run on a board |
 | Dashboard link (`scripts/esp_serial_bridge.py`) | Writes device events to the dashboard logs; `--replay` works without hardware |
 | On-device features (MFCC, HNR, …) | **Not written.** Must match librosa exactly |
 
