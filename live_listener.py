@@ -1,9 +1,10 @@
-import sounddevice as sd
-import numpy as np
-from pipeline import analyze_audio_array
-from datetime import datetime
+import os
 import json
 import time
+from datetime import datetime
+import numpy as np
+import sounddevice as sd
+from pipeline import analyze_audio_array
 
 class AudioMonitor:
     def __init__(self):
@@ -16,6 +17,10 @@ class AudioMonitor:
         self.CONSECUTIVE_THRESHOLD = 3
         self.COOLDOWN = 5
         
+        # Log dosya yolu
+        self.base_dir = os.path.dirname(os.path.abspath(__file__))
+        self.log_file = os.path.join(self.base_dir, "alerts_log.json")
+
         # Durum Değişkenleri
         self.emergency_count = 0
         self.last_alert_time = None
@@ -26,14 +31,17 @@ class AudioMonitor:
 
     def load_logs(self):
         try:
-            with open("alerts_log.json", "r") as f:
-                self.alerts_log = json.load(f)
+            if os.path.exists(self.log_file):
+                with open(self.log_file, "r", encoding="utf-8") as f:
+                    self.alerts_log = json.load(f)
+            else:
+                self.alerts_log = []
         except (FileNotFoundError, json.JSONDecodeError):
             self.alerts_log = []
 
     def save_logs(self):
         try:
-            with open("alerts_log.json", "w") as f:
+            with open(self.log_file, "w", encoding="utf-8") as f:
                 json.dump(self.alerts_log, f, indent=2, ensure_ascii=False)
         except Exception as e:
             print(f"❌ Log kaydetme hatası: {e}")
@@ -52,13 +60,13 @@ class AudioMonitor:
     def trigger_emergency(self):
         timestamp = datetime.now().strftime("%Y-%m-%d %H:%M:%S.%f")[:-3]
         print("\n" + "🚨" * 25)
-        print(f"🚨🚨🚨 ACİL DURUM ALGILANDI! 🚨🚨🚨")
+        print("🚨🚨🚨 ACİL DURUM ALGILANDI! (ENKAZ ALARMI) 🚨🚨🚨")
         print(f"⏰ Zaman: {timestamp}")
         print("🚨" * 25 + "\n")
-        # Buraya SMS/Email entegrasyonu eklenebilir
+        # Buraya SMS/Email/Telsiz entegrasyonu eklenebilir
 
     def rms(self, x):
-        return np.sqrt(np.mean(x ** 2))
+        return float(np.sqrt(np.mean(x ** 2)))
 
     def process_audio(self, indata):
         # Flatten ve normalize
@@ -69,19 +77,25 @@ class AudioMonitor:
             return
 
         try:
-            # Analiz (Resample gerekmez çünkü SR uyumlu)
-            result = analyze_audio_array(audio_chunk)
-            
-            if result.get("status") == "DETECTED":
-                state = result.get('state', 'Bilinmiyor')
-                human_prob = result.get('human_prob', 0)
-                emergency_prob = result.get('emergency_prob', 0)
+            # Analiz
+            result = analyze_audio_array(audio_chunk, sr=self.SAMPLE_RATE)
+            status = result.get("status")
+
+            if status == "DETECTED":
+                state = result.get('state', 'normal')
+                human_prob = result.get('human_prob', 0.0)
+                emergency_prob = result.get('emergency_prob', 0.0)
+                is_emergency = result.get('is_emergency', False)
+                state_confidence = result.get('state_confidence', 0.0)
+
+                icon = "🟢" if state == "normal" else "🔴"
+                print(f"{icon} {state.upper():10} | "
+                      f"Güven: {state_confidence:.1%} | "
+                      f"İnsan: {human_prob:.1%} | "
+                      f"Acil Durum: {emergency_prob:.1%}")
                 
-                print(f"\n👤 {state.upper():10} | "
-                      f"Human: {human_prob:.1%} | "
-                      f"Emergency: {emergency_prob:.1%}")
-                
-                if emergency_prob > self.EMERGENCY_THRESHOLD:
+                # Sadece gerçek bir acil durum sınıfı varsa ve eşik aşılmışsa sayaç artsın
+                if is_emergency or (state != "normal" and emergency_prob >= self.EMERGENCY_THRESHOLD):
                     self.emergency_count += 1
                     self.log_alert(state, human_prob, emergency_prob)
                     print(f"⚠️  ACİL DURUM SAYACI: {self.emergency_count}/{self.CONSECUTIVE_THRESHOLD}")
@@ -92,29 +106,28 @@ class AudioMonitor:
                             (now - self.last_alert_time).total_seconds() > self.COOLDOWN):
                             self.trigger_emergency()
                             self.last_alert_time = now
-                            self.emergency_count = 0
-                        else:
-                             self.emergency_count = 0
+                        self.emergency_count = 0
                 else:
                     if self.emergency_count > 0:
                         self.emergency_count = 0
-                        print(f"✅ Normal duruma döndü.")
+                        print("✅ Normal duruma dönüldü.")
             
-            elif result.get("status") == "no_human":
-                self.emergency_count = 0
+            elif status == "no_human":
+                if self.emergency_count > 0:
+                    self.emergency_count = 0
 
         except Exception as e:
             print(f"❌ İşleme Hatası: {e}")
 
     def start(self):
-        print(f"📊 Konfigürasyon:")
-        print(f"   SR: {self.SAMPLE_RATE}")
-        print(f"   Emergency Threshold: {self.EMERGENCY_THRESHOLD}")
-        print(f"   Device: Default Microphone")
-        print("\n🎧 Canlı dinleme başladı... (Ctrl+C ile durdur)\n")
-
-        # Buffer yönetimi
-        buffer = np.zeros(0, dtype=np.float32)
+        print("=" * 60)
+        print("🚨 ENKAZ ALTI AKUSTİK ACİL DURUM DİNLEYİCİSİ")
+        print("=" * 60)
+        print(f"📊 Örnekleme Hızı: {self.SAMPLE_RATE} Hz")
+        print(f"📊 Acil Durum Eşiği: {self.EMERGENCY_THRESHOLD:.2f}")
+        print(f"📊 Ardışık Doğrulama Sayacı: {self.CONSECUTIVE_THRESHOLD}")
+        print(f"📊 Mikrofon: Varsayılan Giriş Aygıtı")
+        print("🎧 Canlı dinleme başladı... (Durdurmak için Ctrl+C)\n")
 
         try:
             with sd.InputStream(
@@ -128,13 +141,12 @@ class AudioMonitor:
                     data, overflowed = stream.read(self.CHUNK_SIZE)
                     if overflowed:
                         print("⚠️ Audio buffer overflow")
-                    
                     self.process_audio(data)
                     
         except KeyboardInterrupt:
             print("\n⛔ Dinleme durduruldu.")
         except Exception as e:
-            print(f"❌ Kritik Hata: {e}")
+            print(f"❌ Kritik Donanım/Ses Hatası: {e}")
 
 if __name__ == "__main__":
     monitor = AudioMonitor()
