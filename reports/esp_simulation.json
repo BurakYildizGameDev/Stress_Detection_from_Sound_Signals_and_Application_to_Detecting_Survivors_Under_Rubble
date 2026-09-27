@@ -1,0 +1,155 @@
+{
+  "created": "2026-09-27T23:19:36+00:00",
+  "audio": [
+    "samples/woman_scream.mp3",
+    "samples/people_talk.mp3",
+    "samples/bird.mp3",
+    "samples/car_start.mp3"
+  ],
+  "models": {
+    "human": "models/human_detector_esp.pkl",
+    "emergency": "models/emergency_classifier_esp.pkl"
+  },
+  "features": "python (librosa); C feature extraction not implemented (ESP-4)",
+  "windows": 26,
+  "c_python_agreement": 26,
+  "mismatches": [],
+  "per_file": {
+    "woman_scream.mp3": {
+      "windows": 8,
+      "status": {
+        "silence": 2,
+        "DETECTED": 1,
+        "no_human": 5
+      },
+      "states": {
+        "stress": 1
+      }
+    },
+    "(sessizlik)": {
+      "windows": 3,
+      "status": {
+        "silence": 3
+      },
+      "states": {}
+    },
+    "people_talk.mp3": {
+      "windows": 5,
+      "status": {
+        "DETECTED": 5
+      },
+      "states": {
+        "normal": 4,
+        "stress": 1
+      }
+    },
+    "bird.mp3": {
+      "windows": 5,
+      "status": {
+        "DETECTED": 4,
+        "no_human": 1
+      },
+      "states": {
+        "whisper": 1,
+        "stress": 3
+      }
+    },
+    "car_start.mp3": {
+      "windows": 5,
+      "status": {
+        "no_human": 5
+      },
+      "states": {}
+    }
+  },
+  "events": [
+    {
+      "type": "detection",
+      "t_ms": 1000,
+      "episode": 1,
+      "window": 1,
+      "state": "stress",
+      "state_confidence": 0.4678,
+      "human_prob": 0.5338,
+      "emergency_prob": 0.8253
+    },
+    {
+      "type": "episode_end",
+      "t_ms": 2000,
+      "episode": 1,
+      "windows": 1,
+      "alarmed": false
+    },
+    {
+      "type": "detection",
+      "t_ms": 10000,
+      "episode": 2,
+      "window": 1,
+      "state": "stress",
+      "state_confidence": 0.6466,
+      "human_prob": 0.9233,
+      "emergency_prob": 0.8152
+    },
+    {
+      "type": "episode_end",
+      "t_ms": 11000,
+      "episode": 2,
+      "windows": 1,
+      "alarmed": false
+    },
+    {
+      "type": "detection",
+      "t_ms": 15000,
+      "episode": 3,
+      "window": 1,
+      "state": "whisper",
+      "state_confidence": 0.75,
+      "human_prob": 0.589,
+      "emergency_prob": 1.0
+    },
+    {
+      "type": "detection",
+      "t_ms": 16000,
+      "episode": 3,
+      "window": 2,
+      "state": "stress",
+      "state_confidence": 0.775,
+      "human_prob": 0.4707,
+      "emergency_prob": 0.9583
+    },
+    {
+      "type": "episode_end",
+      "t_ms": 17000,
+      "episode": 3,
+      "windows": 2,
+      "alarmed": false
+    },
+    {
+      "type": "detection",
+      "t_ms": 18000,
+      "episode": 4,
+      "window": 1,
+      "state": "stress",
+      "state_confidence": 0.5944,
+      "human_prob": 0.635,
+      "emergency_prob": 0.8837
+    },
+    {
+      "type": "detection",
+      "t_ms": 19000,
+      "episode": 4,
+      "window": 2,
+      "state": "stress",
+      "state_confidence": 0.7233,
+      "human_prob": 0.8726,
+      "emergency_prob": 0.9667
+    },
+    {
+      "type": "episode_end",
+      "t_ms": 21000,
+      "episode": 4,
+      "windows": 2,
+      "alarmed": false
+    }
+  ]
+}

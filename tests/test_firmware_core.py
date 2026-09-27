@@ -263,10 +263,13 @@ def test_json_overflow_returns_error(harness):
     assert harness("J\n").strip() == "-1"
 
 
-def test_rms_matches_numpy(harness):
-    x = np.random.default_rng(0).standard_normal(1000).astype(np.float32) * 0.01
+@pytest.mark.parametrize("n", [1, 511, 512, 1000, 2048, 4095])
+def test_rms_matches_pipeline_v2(harness, n):
+    # pipeline_v2 sessizlik kapısı: np.mean(librosa.feature.rms(y=y))
+    import librosa
+    x = np.random.default_rng(n).standard_normal(n).astype(np.float32) * 0.01
     out = harness(f"R {len(x)} " + " ".join(f"{v:.9g}" for v in x) + "\n")
-    assert float(out) == pytest.approx(float(np.sqrt(np.mean(x.astype(np.float64) ** 2))), rel=1e-6)
+    assert float(out) == pytest.approx(float(np.mean(librosa.feature.rms(y=x))), rel=1e-5)
 
 
 # ---------------------------------------------------------------- köprü
@@ -334,6 +337,7 @@ def test_headers_compile_as_cpp(tmp_path):
     src.write_text('#include "config.h"\n#include "human_detector_model.h"\n'
                    '#include "emergency_classifier_model.h"\n#include "rubble_decision.h"\n'
                    '#include "rubble_events.h"\n#include "rubble_features.h"\n'
+                   '#include "rubble_pipeline.h"\n#include "sim_scenario.h"\n'
                    'static_assert(EMERGENCY_CLASSIFIER_NUM_CLASSES <= RUBBLE_MAX_CLASSES, "sınıf");\n'
                    'static_assert(HUMAN_DETECTOR_NUM_FEATURES == RUBBLE_HUMAN_N_FEATURES, "öznitelik");\n'
                    'static_assert(EMERGENCY_CLASSIFIER_NUM_FEATURES == RUBBLE_EMERGENCY_N_FEATURES, "öznitelik");\n'
