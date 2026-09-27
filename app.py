@@ -20,7 +20,14 @@ STATE_LABELS = {
     "stopped": "⚪ Kapalı",
     "error": "🔴 Hata",
 }
-STATE_ICONS = {"panic": "🔴", "scream": "🔴", "stress": "🟠", "normal": "🟢"}
+STATE_ICONS = {
+    "panic": "🔴",
+    "scream": "🔴",
+    "stress": "🟠",
+    "moan": "🔵",
+    "whisper": "🟣",
+    "normal": "🟢",
+}
 
 
 def start_listener():
