@@ -77,30 +77,43 @@ def make_model_v2(task, class_weight="cost"):
 TARGET_FALSE_ALARM = 0.20
 
 
+def validation_split(d, train, val_fraction=0.15, seed=42):
+    """Eğitim gruplarının (konuşmacı / kaynak) bir kısmını doğrulamaya ayırır.
+    Dönüş: (fit, is_val) maskeleri; ikisi de yalnızca eğitim satırlarını kapsar."""
+    groups = sorted(set(d["group"][train]))
+    rng = np.random.default_rng(seed)
+    val_groups = set(rng.choice(groups, size=max(1, int(len(groups) * val_fraction)), replace=False))
+    is_val = np.isin(d["group"], sorted(val_groups)) & train
+    return train & ~is_val, is_val
+
+
+def pick_human_threshold(p_human, y, target_fa=TARGET_FALSE_ALARM):
+    """Insan dışı kliplerde yanlış alarmı target_fa altında tutan en düşük eşik
+    (en düşük eşik = en az kaçırma). Bulunamazsa 0.5."""
+    neg, pos = y == "non_human", y == "human"
+    for t in np.round(np.arange(0.05, 1.0, 0.01), 2):
+        if np.mean(p_human[neg] >= t) <= target_fa:
+            return float(t)
+    return 0.5
+
+
 def choose_human_threshold(d, train, target_fa=TARGET_FALSE_ALARM, val_fraction=0.15, seed=42,
                            make_model=lambda: make_model_v2("human"), verbose=True):
     """İnsan-sesi eşiğini test verisine bakmadan seçer: eğitim gruplarının bir
     kısmı doğrulamaya ayrılır, model onlarsız eğitilir ve doğrulamadaki insan dışı
     orijinal kliplerde yanlış alarm oranını target_fa altında tutan en düşük eşik
     seçilir (en düşük eşik = en az kaçırma)."""
-    groups = sorted(set(d["group"][train]))
-    rng = np.random.default_rng(seed)
-    val_groups = set(rng.choice(groups, size=max(1, int(len(groups) * val_fraction)), replace=False))
-    is_val = np.isin(d["group"], sorted(val_groups)) & train
-    fit = train & ~is_val
+    fit, is_val = validation_split(d, train, val_fraction, seed)
     model = make_model().fit(d["X"][fit], d["y"][fit])
     val = is_val & (d["transform"] == "original") & (d["synth"] == "none")
     p_human = model.predict_proba(d["X"][val])[:, list(model.classes_).index("human")]
     y = d["y"][val]
-    neg, pos = y == "non_human", y == "human"
-    for t in np.round(np.arange(0.05, 1.0, 0.01), 2):
-        if np.mean(p_human[neg] >= t) <= target_fa:
-            rec = float(np.mean(p_human[pos] >= t))
-            if verbose:
-                print(f"eşik {t:.2f}: doğrulamada yanlış alarm {np.mean(p_human[neg] >= t):.3f}, "
-                      f"insan recall {rec:.3f} (n_neg={neg.sum()}, n_pos={pos.sum()})")
-            return float(t)
-    return 0.5
+    t = pick_human_threshold(p_human, y, target_fa)
+    if verbose:
+        neg, pos = y == "non_human", y == "human"
+        print(f"eşik {t:.2f}: doğrulamada yanlış alarm {np.mean(p_human[neg] >= t):.3f}, "
+              f"insan recall {np.mean(p_human[pos] >= t):.3f} (n_neg={neg.sum()}, n_pos={pos.sum()})")
+    return t
 
 
 def threshold_table(d, model, threshold):

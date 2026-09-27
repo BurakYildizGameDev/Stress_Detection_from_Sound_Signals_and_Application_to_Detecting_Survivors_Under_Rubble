@@ -18,9 +18,9 @@ INMP441 ──I2S──> capture_task (çekirdek 0)
                    v
                  inference_task (çekirdek 1), 1 sn'lik pencere başına rubble_classify():
                    RMS < 0.0015            -> silence
-                   öznitelik (33)          -> human_detector_predict  (10 ağaç, 230 KB)
+                   öznitelik (33)          -> human_detector_predict  (25 ağaç, 414 KB)
                    P(insan) < 0.45         -> no_human
-                   öznitelik (19)          -> emergency_classifier_predict (10 ağaç, 421 KB)
+                   öznitelik (19)          -> emergency_classifier_predict (25 ağaç, 670 KB)
                    sınıf != normal ve 1 - P(normal) >= 0.45 -> acil durum penceresi
                    rubble_tracker: art arda 3 pencere -> tek alarm (5 sn bekleme), LED
                    │
@@ -74,7 +74,7 @@ zayıflıklarını da gösteriyor:
 |---|---|
 | `people_talk.mp3` | 5 pencerenin 4'ü normal konuşma, 1'i stres (tek pencere, alarm yok) |
 | `woman_scream.mp3` | Çığlığın çoğu "insan sesi değil" (küçük insan dedektörü sözsüz sesleri kaçırıyor) |
-| `bird.mp3` | 4 pencere yanlışlıkla fısıltı/stres; araya bir "insan değil" girdiği için alarm yok |
+| `bird.mp3` | 5 pencerenin 5'i fısıltı/stres sanılıyor: **yanlış alarm** |
 | `car_start.mp3` | 5/5 "insan sesi değil" |
 
 ### Wokwi
@@ -201,8 +201,13 @@ Planın geri kalanı `yapilabilir.md` bölüm 4'te.
   24 bit verisi [-1, 1) aralığına ölçekleniyor, ama bu ölçek eğitimde
   kullanılan kayıtlarla karşılaştırılmadı.
 - **Doğruluk.** Küçük modeller tam v2 modellerinden zayıf; gerçek
-  inleme/çığlık yakalama 0.70'ten 0.50'ye düşüyor
-  (`reports/esp_model_sweep.json`), simülatörde de kuş sesi fısıltı sanılıyor.
+  inleme/çığlık yakalama 0.70'ten 0.53'e düşüyor
+  (`reports/esp_model_sweep.json`), simülatörde kuş sesi yanlış alarm veriyor.
+- **Eşik sınırı.** C olasılıkları float32, Python float64 hesaplar (fark
+  ~1e-7). Acil durum eşiği (0.45) hiçbir zaman sınırda değildir: en olası sınıf
+  normal değilse acil durum olasılığı en az 0.5'tir. Fark yalnızca sınıf
+  olasılıklarının 1e-7 içinde eşit olduğu beraberliklerde karar değiştirebilir
+  (18.036 test satırında görülmedi).
 - **İletişim.** Olaylar yalnızca USB seri porttan gidiyor. Sahada LoRa ya da
   ESP-NOW gerekir.
 - **Güç.** Pil ve uyku modu yok.

@@ -13,11 +13,15 @@ Flash boyutu:
   sayısı x BYTES_PER_NODE ile tahmin edilir. İkisi de ESP32-S3 üzerindeki gerçek
   boyut değil, yaklaşık değerdir.
 
-Seçim:
-  human      bütçeye sığanlar arasında temiz test koşulunda en yüksek dengeli doğruluk
-             ((insan recall + (1 - yanlış alarm)) / 2); eşik v2 ile aynı yöntemle
-             test verisine bakmadan seçilir.
-  emergency  bütçeye sığanlar arasında temiz ve ağır enkaz koşullarında ortalama macro-F1.
+Seçim (test verisine bakılmaz):
+  Eğitim gruplarının %15'i doğrulamaya ayrılır (train_v2 eşik seçimiyle aynı
+  gruplar). Her aday kalan %85 ile eğitilip doğrulamada puanlanır:
+  human      doğrulamada seçilen eşikte (yanlış alarm <= hedef) dengeli doğruluk
+             ((insan recall + (1 - yanlış alarm)) / 2), orijinal kayıtlar
+  emergency  doğrulamada temiz (original) ve enkaz (rubble_random) kayıtlarında
+             ortalama macro-F1
+  Bütçeye sığanlar içinde en iyisi tüm eğitim verisiyle yeniden eğitilir ve test
+  bölmesinde yalnızca bir kez ölçülür (v2 referansıyla birlikte).
 
 Sınıf ağırlıkları: v2'nin maliyet ağırlıkları (fısıltı x8, inleme x6) sığ
 ağaçlarda normal konuşmanın %59-93'ünü acil durum yaptı (tam modelde %23).
@@ -54,8 +58,8 @@ from evaluation import summarize
 from features_v2 import FEATURE_SPECS_V2
 from pipeline_v2 import EMERGENCY_PROB_THRESHOLD, MODEL_FILES_V2
 from scripts.export_c_model import export_random_forest_to_c
-from scripts.train_v2 import (LABELS, TARGET_FALSE_ALARM, choose_human_threshold,
-                              load_features_v2)
+from scripts.train_v2 import (LABELS, TARGET_FALSE_ALARM, load_features_v2,
+                              pick_human_threshold, validation_split)
 
 TASKS = ("human", "emergency")
 REPORT_PATH = os.path.join(ROOT, "reports", "esp_model_sweep.json")
@@ -118,7 +122,10 @@ def alloc_section_sizes(obj_bytes):
 
 
 def measure_flash_bytes(model, cc_cmd, name="m"):
-    """Modeli C'ye çevirip derler, nesne dosyasının yüklenen bölümlerini toplar."""
+    """Modeli C'ye çevirip derler, nesne dosyasının yüklenen bölümlerini toplar.
+    Hedef ve optimizasyon bayrakları cc_cmd'den gelir (raporda flash_compiler);
+    raporlanan sayılar -Os ile ARM Thumb derlemesidir. Sonuç model nesnesinin
+    boyutudur, firmware'in toplam flash kullanımı değil (o, pio run çıktısında)."""
     code = export_random_forest_to_c(model, model_name=name)
     with tempfile.TemporaryDirectory() as tmp:
         with open(os.path.join(tmp, "m.h"), "w", encoding="utf-8") as f:
@@ -164,7 +171,30 @@ def emergency_metrics(d, model):
     return out
 
 
-def score(task, metrics):
+def validation_metrics(task, d, is_val, model, target_fa):
+    """Aday modeli doğrulama gruplarında puanlar. Dönüş: (metrikler, skor, eşik)."""
+    if task == "human":
+        val = is_val & (d["transform"] == "original") & (d["synth"] == "none")
+        p_human = model.predict_proba(d["X"][val])[:, list(model.classes_).index("human")]
+        y = d["y"][val]
+        threshold = pick_human_threshold(p_human, y, target_fa)
+        is_human = p_human >= threshold
+        recall = float(is_human[y == "human"].mean())
+        fa = float(is_human[y == "non_human"].mean())
+        m = {"human_recall": recall, "false_alarm": fa, "balanced_accuracy": (recall + 1.0 - fa) / 2.0,
+             "n": int(val.sum())}
+        return m, m["balanced_accuracy"], threshold
+    m = {}
+    for name, transform in (("clean", "original"), ("rubble", "rubble_random")):
+        at = is_val & (d["transform"] == transform)
+        s = summarize("emergency", d["y"][at], model.predict(d["X"][at]), LABELS["emergency"])
+        m[name] = {"macro_f1": s["macro_f1"], "false_alarm": s["false_alarm_rate"],
+                   "miss": s["miss_rate"], "n": s["n"]}
+    return m, (m["clean"]["macro_f1"] + m["rubble"]["macro_f1"]) / 2.0, None
+
+
+def report_score(task, metrics):
+    """Yalnızca raporlama için (seçimde kullanılmaz)."""
     if task == "human":
         return metrics["clean"]["balanced_accuracy"]
     return (metrics["clean"]["macro_f1"] + metrics["rubble_physical_severe"]["macro_f1"]) / 2.0
@@ -178,22 +208,20 @@ def select_best(rows, budget_bytes):
     return max(fits, key=lambda r: (round(r["score"], 4), -r["flash_bytes"]))
 
 
-def evaluate_config(task, d, train, n_trees, max_depth, class_weight, target_fa, cc_cmd):
+def flash_bytes(model, cc_cmd):
+    return measure_flash_bytes(model, cc_cmd) if cc_cmd else int(n_nodes(model) * BYTES_PER_NODE)
+
+
+def evaluate_config(task, d, fit, is_val, n_trees, max_depth, class_weight, target_fa, cc_cmd):
+    """Adayı %85 ile eğitir, doğrulamada puanlar. Test verisi kullanılmaz."""
     t0 = time.time()
-    factory = lambda: make_esp_model(n_trees, max_depth, class_weight)  # noqa: E731
-    threshold = (choose_human_threshold(d, train, target_fa, make_model=factory, verbose=False)
-                 if task == "human" else None)
-    model = factory().fit(d["X"][train], d["y"][train])
-    metrics = human_metrics(d, model, threshold) if task == "human" else emergency_metrics(d, model)
-    nodes = n_nodes(model)
-    measured = cc_cmd is not None
-    flash = measure_flash_bytes(model, cc_cmd) if measured else int(nodes * BYTES_PER_NODE)
-    row = {"n_trees": n_trees, "max_depth": max_depth, "min_samples_leaf": MIN_SAMPLES_LEAF,
-           "class_weight": class_weight or "none",
-           "nodes": nodes, "flash_bytes": flash, "flash_measured": measured,
-           "threshold": threshold, "metrics": metrics, "score": score(task, metrics),
-           "seconds": round(time.time() - t0, 1)}
-    return row, model
+    model = make_esp_model(n_trees, max_depth, class_weight).fit(d["X"][fit], d["y"][fit])
+    metrics, val_score, threshold = validation_metrics(task, d, is_val, model, target_fa)
+    return {"n_trees": n_trees, "max_depth": max_depth, "min_samples_leaf": MIN_SAMPLES_LEAF,
+            "class_weight": class_weight or "none",
+            "nodes": n_nodes(model), "flash_bytes": flash_bytes(model, cc_cmd),
+            "flash_measured": cc_cmd is not None, "threshold": threshold,
+            "val_metrics": metrics, "score": val_score, "seconds": round(time.time() - t0, 1)}
 
 
 def reference_row(task, d):
@@ -211,10 +239,20 @@ def reference_row(task, d):
     return {"model": os.path.basename(path), "n_trees": len(model.estimators_),
             "max_depth": int(max(e.tree_.max_depth for e in model.estimators_)),
             "nodes": nodes, "flash_bytes_estimated": int(nodes * BYTES_PER_NODE),
-            "threshold": threshold, "metrics": metrics, "score": score(task, metrics)}
+            "threshold": threshold, "metrics": metrics, "test_score": report_score(task, metrics)}
 
 
-def print_row(task, r, mark=""):
+def print_val_row(task, r, mark=""):
+    m = r["val_metrics"]
+    if task == "human":
+        detail = f"recall {m['human_recall']:.3f}  FA {m['false_alarm']:.3f}  eşik {r['threshold']:.2f}"
+    else:
+        detail = f"F1 temiz {m['clean']['macro_f1']:.3f}  enkaz {m['rubble']['macro_f1']:.3f}"
+    print(f"  {r['class_weight']:8s} {r['n_trees']:4d} ağaç  d={r['max_depth']:2d}  {r['nodes']:8d} düğüm  "
+          f"{r['flash_bytes'] / 1024:9.0f} KB  doğrulama {r['score']:.3f} | {detail} {mark}")
+
+
+def print_test_row(task, r):
     m = r["metrics"]
     if task == "human":
         c = m["clean"]
@@ -226,7 +264,7 @@ def print_row(task, r, mark=""):
                   f"FA {m['clean']['false_alarm']:.3f}  kaçırma {m['clean']['miss']:.3f}")
     flash = r.get("flash_bytes", r.get("flash_bytes_estimated"))
     print(f"  {r.get('class_weight', 'v2'):8s} {r['n_trees']:4d} ağaç  d={r['max_depth']:2d}  {r['nodes']:8d} düğüm  "
-          f"{flash / 1024:9.0f} KB  skor {r['score']:.3f} | {detail} {mark}")
+          f"{flash / 1024:9.0f} KB  test {r['test_score']:.3f} | {detail}")
 
 
 def run_task(task, target_fa, cc_cmd, save):
@@ -238,30 +276,43 @@ def run_task(task, target_fa, cc_cmd, save):
 
     ref = reference_row(task, d)
     if ref:
-        print("Referans (tam v2 modeli, flash tahmini):")
-        print_row(task, ref)
+        print("Referans (tam v2 modeli, test):")
+        print_test_row(task, ref)
 
-    rows, models = [], {}
+    fit, is_val = validation_split(d, train)
+    print(f"Aday seçimi doğrulamada: {len(set(d['group'][is_val]))} grup "
+          f"({is_val.sum()} satır), eğitim {fit.sum()} satır")
+    rows = []
     for class_weight in CLASS_WEIGHTS[task]:
         for n_trees in N_TREES:
             for max_depth in MAX_DEPTHS:
-                row, model = evaluate_config(task, d, train, n_trees, max_depth, class_weight,
-                                             target_fa, cc_cmd)
+                row = evaluate_config(task, d, fit, is_val, n_trees, max_depth, class_weight,
+                                      target_fa, cc_cmd)
                 rows.append(row)
-                models[(row["class_weight"], n_trees, max_depth)] = model
-                print_row(task, row, "" if row["flash_bytes"] <= budget else "(bütçe aşıldı)")
+                print_val_row(task, row, "" if row["flash_bytes"] <= budget else "(bütçe aşıldı)")
 
     best = select_best(rows, budget)
-    result = {"budget_kb": FLASH_BUDGET_KB[task], "reference_v2": ref, "sweep": rows,
+    result = {"budget_kb": FLASH_BUDGET_KB[task], "selection": "validation groups (15% of train)",
+              "reference_v2": ref, "sweep": rows,
               "selected": best and {k: best[k] for k in ("class_weight", "n_trees", "max_depth")}}
     if best is None:
         print("Bütçeye sığan model yok.")
         return result
-    print("Seçilen:")
-    print_row(task, best)
+
+    # Seçilen ayar tüm eğitim verisiyle; eşik doğrulamada seçilen (train_v2 ile aynı yöntem)
+    weight = None if best["class_weight"] == "none" else best["class_weight"]
+    model = make_esp_model(best["n_trees"], best["max_depth"], weight).fit(d["X"][train], d["y"][train])
+    threshold = best["threshold"]
+    metrics = human_metrics(d, model, threshold) if task == "human" else emergency_metrics(d, model)
+    final = {"class_weight": best["class_weight"], "n_trees": best["n_trees"],
+             "max_depth": best["max_depth"], "nodes": n_nodes(model),
+             "flash_bytes": flash_bytes(model, cc_cmd), "flash_measured": cc_cmd is not None,
+             "threshold": threshold, "metrics": metrics, "test_score": report_score(task, metrics)}
+    result["final"] = final
+    print("Seçilen (tüm eğitim verisiyle, test bölmesinde bir kez):")
+    print_test_row(task, final)
 
     if save:
-        model = models[(best["class_weight"], best["n_trees"], best["max_depth"])]
         path = os.path.join(MODELS_DIR, ESP_MODEL_FILES[task])
         joblib.dump(model, path, compress=3)
         meta = {
@@ -272,12 +323,14 @@ def run_task(task, target_fa, cc_cmd, save):
             "created": datetime.now(timezone.utc).isoformat(timespec="seconds"),
             "params": {"n_estimators": best["n_trees"], "max_depth": best["max_depth"],
                        "min_samples_leaf": MIN_SAMPLES_LEAF, "class_weight": best["class_weight"]},
-            "nodes": best["nodes"],
-            "flash_bytes": best["flash_bytes"],
-            "flash_measured": best["flash_measured"],
-            "human_threshold": best["threshold"],
+            "nodes": final["nodes"],
+            "flash_bytes": final["flash_bytes"],
+            "flash_measured": final["flash_measured"],
+            "human_threshold": threshold,
             "emergency_threshold": EMERGENCY_PROB_THRESHOLD if task == "emergency" else None,
-            "metrics": best["metrics"],
+            "selection": "validation groups (15% of train); test evaluated once",
+            "validation_metrics": best["val_metrics"],
+            "metrics": metrics,
             "reference_v2_metrics": ref and ref["metrics"],
             "c_name": C_NAMES[task],
             "report": os.path.relpath(REPORT_PATH, ROOT).replace(os.sep, "/"),
