@@ -3,9 +3,10 @@ import numpy as np
 import librosa
 import joblib
 
+from features import HUMAN_SR, human_features, emergency_features
+
 # Temel Yapılandırma
-SR = 22050
-EMERGENCY_SR = 16000
+SR = HUMAN_SR
 WINDOW_SEC = 1.0
 HOP_SEC = 0.5
 RMS_THRESHOLD = 0.01
@@ -25,43 +26,10 @@ LABELS = ["normal", "stress", "scream", "panic"]
 # FEATURE EXTRACTORS
 # =========================
 def extract_human_features(y, sr=SR):
-    """
-    İnsan sesi tespiti için 28 öznitelik:
-    - 13 MFCC ortalama
-    - 13 MFCC standart sapma
-    - 1 ZCR ortalama
-    - 1 RMS ortalama
-    """
-    mfcc = librosa.feature.mfcc(y=y, sr=sr, n_mfcc=13)
-    feats = []
-    feats.extend(np.mean(mfcc, axis=1))
-    feats.extend(np.std(mfcc, axis=1))
-    feats.append(float(np.mean(librosa.feature.zero_crossing_rate(y))))
-    feats.append(float(np.mean(librosa.feature.rms(y=y))))
-    return np.array(feats, dtype=np.float32).reshape(1, -1)
+    return human_features(y, sr=sr).reshape(1, -1)
 
 def extract_emergency_features(y, sr=SR):
-    """
-    Acil durum sınıflandırması için 15 öznitelik:
-    (Model 16000 Hz'de eğitilmiştir)
-    - 13 MFCC ortalama
-    - 1 RMS ortalama (index 13)
-    - 1 Spectral Centroid ortalama (index 14)
-    """
-    if sr != EMERGENCY_SR:
-        y_16k = librosa.resample(y, orig_sr=sr, target_sr=EMERGENCY_SR)
-    else:
-        y_16k = y
-
-    mfcc = librosa.feature.mfcc(y=y_16k, sr=EMERGENCY_SR, n_mfcc=13)
-    rms = librosa.feature.rms(y=y_16k)
-    centroid = librosa.feature.spectral_centroid(y=y_16k, sr=EMERGENCY_SR)
-
-    feats = []
-    feats.extend(np.mean(mfcc, axis=1))
-    feats.append(float(np.mean(rms)))
-    feats.append(float(np.mean(centroid)))
-    return np.array(feats, dtype=np.float32).reshape(1, -1)
+    return emergency_features(y, sr=sr).reshape(1, -1)
 
 # =========================
 # CORE PIPELINE

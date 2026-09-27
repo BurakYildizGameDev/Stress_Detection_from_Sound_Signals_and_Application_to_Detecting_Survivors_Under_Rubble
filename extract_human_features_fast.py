@@ -3,19 +3,11 @@ import numpy as np
 import librosa
 from tqdm import tqdm
 
+from features import HUMAN_SR, human_features
+
 def extract_features(path):
-    y, sr = librosa.load(path, sr=22050, duration=2)
-
-    mfcc = librosa.feature.mfcc(y=y, sr=sr, n_mfcc=13)
-    zcr = librosa.feature.zero_crossing_rate(y)
-    rms = librosa.feature.rms(y=y)
-
-    return np.hstack([
-        np.mean(mfcc, axis=1),
-        np.std(mfcc, axis=1),
-        np.mean(zcr),
-        np.mean(rms)
-    ])
+    y, sr = librosa.load(path, sr=HUMAN_SR, duration=2)
+    return human_features(y, sr)
 
 def process(folder, label):
     X, y = [], []
