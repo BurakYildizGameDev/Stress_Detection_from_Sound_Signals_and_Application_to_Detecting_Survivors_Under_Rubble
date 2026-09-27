@@ -25,9 +25,11 @@ extern "C" {
 #define RUBBLE_HUMAN_N_FEATURES 33
 #define RUBBLE_EMERGENCY_N_FEATURES 19
 
-/* Pencerenin tamamı üzerinden RMS. Not: pipeline_v2 librosa.feature.rms
-   karelerinin ortalamasını kullanır; sessiz/sesli ayrımı için fark küçüktür,
-   birebir eşleşme ESP-4'te. */
+/* pipeline_v2'deki np.mean(librosa.feature.rms(y)) ile aynı: 2048 örneklik
+   çerçeveler, 512 atlama, center=True (iki yana 1024 sıfır), çerçeve RMS'lerinin
+   ortalaması. */
+#define RUBBLE_RMS_FRAME 2048
+#define RUBBLE_RMS_HOP 512
 float rubble_rms(const float* x, int n);
 
 /* out: RUBBLE_HUMAN_N_FEATURES float (features_v2.human_features_v2) */

@@ -30,6 +30,10 @@
 #define ALARM_CONSECUTIVE 3
 #define ALARM_COOLDOWN_MS 5000
 
+/* Alarm LED'i (dirençle GND'ye; Wokwi diyagramında da bu pin) */
+#define ALARM_LED_PIN 7
+#define ALARM_LED_MS 5000
+
 /* Durum satırı (heartbeat) aralığı */
 #define STATUS_INTERVAL_MS 1000
 

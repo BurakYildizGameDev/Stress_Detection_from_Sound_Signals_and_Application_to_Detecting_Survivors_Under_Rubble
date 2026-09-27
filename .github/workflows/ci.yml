@@ -31,6 +31,9 @@ jobs:
   firmware:
     name: Firmware build (ESP32-S3)
     runs-on: ubuntu-latest
+    env:
+      # step-level env is not visible in that step's own `if:`
+      WOKWI_CLI_TOKEN: ${{ secrets.WOKWI_CLI_TOKEN }}
     steps:
       - uses: actions/checkout@v4
 
@@ -46,5 +49,31 @@ jobs:
       - name: Install PlatformIO
         run: pip install platformio
 
-      - name: Build
-        run: pio run -d firmware
+      - name: Build (microphone firmware)
+        run: pio run -d firmware -e esp32-s3-devkitc-1
+
+      - name: Build (Wokwi scenario firmware)
+        run: pio run -d firmware -e wokwi
+
+      # Wokwi runs only if the repository has a WOKWI_CLI_TOKEN secret
+      # (free: https://wokwi.com/dashboard/ci). The scenario replays 19 windows
+      # of precomputed features on the simulated ESP32-S3 and checks every
+      # decision against the host simulator.
+      - name: Run in Wokwi simulator
+        if: env.WOKWI_CLI_TOKEN != ''
+        uses: wokwi/wokwi-ci-action@v1
+        with:
+          token: ${{ secrets.WOKWI_CLI_TOKEN }}
+          path: firmware
+          timeout: 60000
+          expect_text: SIM_DONE OK
+          fail_text: SIM_DONE MISMATCH
+          serial_log_file: wokwi-serial.log
+
+      - name: Upload Wokwi serial log
+        if: always() && env.WOKWI_CLI_TOKEN != ''
+        uses: actions/upload-artifact@v4
+        with:
+          name: wokwi-serial-log
+          path: "**/wokwi-serial.log"
+          if-no-files-found: ignore

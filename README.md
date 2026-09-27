@@ -140,7 +140,8 @@ the code.
 │   ├── prepare_training.py  # runs 1–3 (and 4–5 with --train) in one go
 │   ├── train_esp.py         # small models that fit ESP32-S3 flash → models/*_esp.pkl
 │   ├── export_c_model.py    # Random Forest → dependency-free C header
-│   └── esp_serial_bridge.py # ESP32 serial output → dashboard log files
+│   ├── esp_serial_bridge.py # ESP32 serial output → dashboard log files
+│   └── esp_simulate.py      # run the firmware's C decision path on audio files
 │
 ├── firmware/                # ESP32-S3 + INMP441 prototype (PlatformIO), see firmware/README.md
 │
@@ -451,10 +452,11 @@ What this shows:
 
 ## Embedded prototype (ESP32-S3)
 
-> **Prototype, not tested on hardware.** CI compiles the firmware on every push
-> and its decision and alarm logic is tested against the Python code, but it has
-> never run on a board. On-device feature extraction is not written yet, so the
-> firmware cannot classify audio yet.
+> **Prototype, verified in simulation only.** The firmware has never run on a
+> real board, and no hardware test is planned. It is tested in simulation
+> instead (below). On-device feature extraction is not written yet: in
+> simulation the features come from Python, and on a real microphone the
+> firmware could not classify audio yet.
 
 The goal is a microphone left in the debris that classifies audio on the device
 and only sends events. Details: [firmware/README.md](firmware/README.md).
@@ -466,7 +468,22 @@ and only sends events. Details: [firmware/README.md](firmware/README.md).
 | Decision + alarm logic (`firmware/lib/rubble_core`, C99) | Tested against `pipeline_v2` and `events.AlarmTracker` on the host |
 | Firmware (`firmware/src/main.cpp`) | I2S capture, FreeRTOS tasks, JSON over serial. Compiled in CI for ESP32-S3 (flash 1.08 MB of 3 MB, both models included), never run on a board |
 | Dashboard link (`scripts/esp_serial_bridge.py`) | Writes device events to the dashboard logs; `--replay` works without hardware |
+| Host simulator (`scripts/esp_simulate.py`) | Runs the firmware's C decision path on real audio files, compares every window with the Python pipeline |
+| Wokwi simulation (`firmware/wokwi.toml`, `diagram.json`) | Simulated ESP32-S3 + alarm LED; replays 19 windows of precomputed features and checks each decision on the device |
 | On-device features (MFCC, HNR, …) | **Not written.** Must match librosa exactly |
+
+How it was tested without hardware:
+
+| Layer | What it checks | Result |
+|---|---|---|
+| C unit tests | Decision, alarm tracker, RMS, JSON and exported models compiled on the host and compared with `PipelineV2`, `AlarmTracker`, `librosa.feature.rms` and sklearn | Identical (probabilities within 2e-7) |
+| Host simulator | Firmware behaviour on the repo's sample recordings | 26/26 windows identical to the Python pipeline ([reports/esp_simulation.json](reports/esp_simulation.json)) |
+| Wokwi | Firmware running as Xtensa code with FreeRTOS tasks, models on the device CPU, serial output, alarm LED | Scenario firmware builds in CI; running it needs a Wokwi account (VS Code or a `WOKWI_CLI_TOKEN` CI secret) |
+| CI build | Microphone firmware for ESP32-S3 | Flash 1.08 MB of 3 MB |
+
+Not covered by any simulation: the I2S microphone driver (Wokwi does not
+simulate I2S or microphones on the ESP32-S3), real timing, power, and on-device
+feature extraction. Details and commands: [firmware/README.md](firmware/README.md).
 
 Accuracy of the small models vs. full v2 (`reports/esp_model_sweep.json`):
 
@@ -503,9 +520,10 @@ These are stated openly on purpose:
 7. **No rubble acoustics.** The robustness protocol only simulates noise,
    attenuation and low-pass filtering; nothing has been recorded through real
    debris.
-8. **The ESP32 firmware is untested and incomplete.** It has never run on a
-   board, cannot yet compute features on the device, and its small models catch
-   fewer real non-verbal vocalisations (0.50 vs 0.70).
+8. **The ESP32 firmware is verified in simulation only and is incomplete.** It
+   has never run on a board, cannot yet compute features on the device, and its
+   small models catch fewer real non-verbal vocalisations (0.50 vs 0.70); in the
+   host simulator birdsong is taken for whispering.
 
 ---
 

@@ -40,3 +40,7 @@ DEPREM_PROJESI_PROBLEMLER.md
 firmware/include/*_model.h
 !firmware/include/human_detector_model.h
 !firmware/include/emergency_classifier_model.h
+
+# PlatformIO build output, host simulator binary
+firmware/.pio/
+firmware/sim/build/

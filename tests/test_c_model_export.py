@@ -1,6 +1,4 @@
 import os
-import shlex
-import shutil
 import subprocess
 import sys
 
@@ -10,6 +8,7 @@ from sklearn.ensemble import RandomForestClassifier
 
 sys.path.insert(0, os.path.dirname(os.path.dirname(os.path.abspath(__file__))))
 
+from scripts.c_compiler import find_c_compiler
 from scripts.export_c_model import (
     c_float,
     export_random_forest_to_c,
@@ -17,19 +16,8 @@ from scripts.export_c_model import (
 )
 
 
-def _find_c_compiler():
-    """CC ortam değişkeni (ör. "python -m ziglang cc") ya da PATH'teki gcc/cc/clang."""
-    if os.environ.get("CC"):
-        return shlex.split(os.environ["CC"], posix=os.name != "nt")
-    for name in ("gcc", "cc", "clang"):
-        path = shutil.which(name)
-        if path:
-            return [path]
-    return None
-
-
-CC = _find_c_compiler()
-needs_cc = pytest.mark.skipif(CC is None, reason="C derleyicisi yok (CC ortam değişkeni ya da gcc/clang)")
+CC = find_c_compiler()
+needs_cc = pytest.mark.skipif(CC is None, reason="C derleyicisi yok (CC, gcc/clang ya da pip install ziglang)")
 
 
 def _fit(n_classes, n_features, n_estimators=5, max_depth=4, seed=42, scale=1.0):
