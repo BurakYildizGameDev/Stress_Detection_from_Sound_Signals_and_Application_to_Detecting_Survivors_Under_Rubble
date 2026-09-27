@@ -89,7 +89,7 @@ def synthesize(y, sr, kind, rng):
     return convert_to_moan_dsp(y, sr, **random_moan_params(rng))
 
 
-def process_row_v2(task, rec, label, augment):
+def process_row_v2(task, rec, label, augment, conditions=TEST_CONDITIONS):
     """Bir kayıt -> [(öznitelik, transform, synth, condition, etiket), ...]."""
     spec = FEATURE_SPECS_V2[task]
     func = FEATURE_FUNCS_V2[task]
@@ -125,18 +125,19 @@ def process_row_v2(task, rec, label, augment):
                     out.append((func(fn(sig, sr, rng_for(name)), sr), name, synth, "train", lab))
     else:
         for synth, sig, lab in sources:
-            for cond in TEST_CONDITIONS:
+            for cond in conditions:
                 sig_c = CONDITIONS[cond](sig, sr, rng_for(f"{synth}|{cond}"))
                 out.append((func(sig_c, sr), "original", synth, cond, lab))
     return out, None
 
 
-def extract_task_v2(task, augment=True, max_per_dataset=300, max_per_nonverbal=1500, n_jobs=-1):
+def extract_task_v2(task, augment=True, max_per_dataset=300, max_per_nonverbal=1500, n_jobs=-1,
+                    conditions=TEST_CONDITIONS):
     manifest = read_manifest(MANIFEST_PATH)
     rows = select_rows_v2(task, manifest, max_per_dataset, max_per_nonverbal)
     print(f"\n[*] {task}_v2 | kayıt: {len(rows)} | artırma: {augment}")
 
-    jobs = (delayed(process_row_v2)(task, r, lab, augment) for r, lab in rows)
+    jobs = (delayed(process_row_v2)(task, r, lab, augment, conditions) for r, lab in rows)
     cols = {k: [] for k in ("X", "y", "split", "group", "dataset", "path",
                             "transform", "synth", "condition")}
     errors = 0
@@ -169,7 +170,7 @@ def extract_task_v2(task, augment=True, max_per_dataset=300, max_per_nonverbal=1
         "augmented": bool(augment),
         "max_per_dataset": max_per_dataset if task == "human" else None,
         "max_per_nonverbal": max_per_nonverbal if task == "human" else None,
-        "test_conditions": list(TEST_CONDITIONS),
+        "test_conditions": list(conditions),
         "eval_only_datasets": sorted(EVAL_ONLY_DATASETS & set(arrays["dataset"].tolist())),
     }
     with open(os.path.splitext(out_npz)[0] + ".json", "w", encoding="utf-8") as f:
@@ -188,11 +189,14 @@ def main():
                    help="insan-sesi görevinde veri seti başına en fazla insan kaydı")
     p.add_argument("--max-per-nonverbal", type=int, default=1500,
                    help="insan-sesi görevinde sözsüz ses veri seti başına en fazla kayıt")
-    p.add_argument("--jobs", type=int, default=-1)
+    p.add_argument("--jobs", type=int, default=-1, help="paralel işlem (laptopta ör. 8)")
+    p.add_argument("--quick", action="store_true",
+                   help="test koşulları yalnızca clean + rubble_physical_medium")
     args = p.parse_args()
+    conditions = ("clean", "rubble_physical_medium") if args.quick else TEST_CONDITIONS
     for t in TASKS if args.task == "all" else (args.task,):
         extract_task_v2(t, not args.no_augment, args.max_per_dataset,
-                        args.max_per_nonverbal, args.jobs)
+                        args.max_per_nonverbal, args.jobs, conditions)
 
 
 if __name__ == "__main__":

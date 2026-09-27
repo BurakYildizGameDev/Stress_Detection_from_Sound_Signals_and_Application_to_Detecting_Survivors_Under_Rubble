@@ -233,6 +233,9 @@ python scripts/download_data.py tess      # a single dataset
 | [JL-Corpus](https://www.kaggle.com/datasets/tli725/jl-corpus) | English (NZ) | human | CC0 | manual |
 | [ESC-50](https://github.com/karolpiczak/ESC-50) | — | non-human | CC BY-NC 3.0 | automatic |
 | [VIVAE](https://doi.org/10.5281/zenodo.4066235) | non-verbal | human, **test only** | CC BY-NC 4.0 | automatic |
+| [VocalSound](https://github.com/YuanGongND/vocalsound) | non-verbal | human (v2 only) | CC BY-SA 4.0 | automatic (~1.7 GB) |
+| [Nonspeech7k](https://doi.org/10.5281/zenodo.6967442) | non-verbal | human (v2 only) | CC BY-NC-SA 4.0 | automatic (~2.5 GB, slow) |
+| ESC-50 human vocal classes | non-verbal | human (v2 only) | CC BY-NC 3.0 | with ESC-50 |
 
 ### Manifest
 
@@ -401,10 +404,26 @@ What this shows:
    moans from VIVAE are classified as `stress` (54) or `normal` (26), never `moan`.
    Under simulated rubble more of them become `moan`, but so do real fear screams
    (41/176 under severe rubble): the model has learned "low-passed audio = moan".
-2. **The human detector rejects non-verbal vocalisations.** 95% of VIVAE clips
-   (moans, screams, groans) are classified `non_human` by v2, and 97% by v1. It was
-   trained on speech only, so a survivor who moans instead of talking never reaches
-   stage 2. This is the most important finding so far.
+2. **The speech-only human detector rejected non-verbal vocalisations.** 95% of VIVAE
+   clips (moans, screams, groans) were classified `non_human` by v2, and 97% by v1, so a
+   survivor who moans instead of talking never reached stage 2. Retraining with
+   non-verbal human sounds (ESC-50 breathing/coughing/crying/snoring, VocalSound,
+   Nonspeech7k test part, grouped by source recording) fixes most of this, at a cost
+   (`--quick` run: clean + medium rubble only):
+
+   | Human detector v2, threshold 0.5 | speech-only | + non-verbal |
+   |---|---|---|
+   | VIVAE recall, clean / medium rubble | 0.05 / 0.18 | **0.88 / 0.78** |
+   | VIVAE pain (moans) recall, clean | – | 43 / 50 |
+   | Nonspeech7k test recall (screams 8/10, crying 68/72, breath 20/47) | – | 0.80 |
+   | Acted speech recall | 0.99 | 1.00 |
+   | **ESC-50 false-alarm rate**, clean | 0.045 | **0.318** |
+
+   The new false alarms are mostly animals (pig, cat, cow, dog, rooster, sheep, frog)
+   and water/drinking sounds. The threshold trades one for the other: at 0.6 false
+   alarms drop to 0.20 and VIVAE recall to 0.67; at 0.8, 0.04 and 0.12. Note that
+   `pipeline_v2.HUMAN_PROB_THRESHOLD` is 0.20, where the false-alarm rate is 0.65.
+   More non-human training data (1408 ESC-50 clips vs ~19k human rows) is the next fix.
 3. Cost-sensitive class weights (whisper 8×, moan 6×) did not raise whisper/moan
    recall over `class_weight="balanced"` (0.97 in both) but raised the false-alarm rate
    from 0.169 to 0.232 (`reports/emergency_v2_balanced.json`).
@@ -447,7 +466,8 @@ These are stated openly on purpose:
 - [x] Retrain both models with the new pipeline and publish the reports here
 - [x] Loudness-normalised features (v2)
 - [x] External real-data test set (VIVAE) and a folder for field recordings ([docs/REAL_DATA.md](docs/REAL_DATA.md))
-- [ ] Human detector trained with non-verbal vocalisations (moans, screams) as `human`
+- [x] Human detector trained with non-verbal vocalisations (moans, screams) as `human`
+- [ ] More non-human data (animals, rubble-site noise) to bring the new false alarms down
 - [ ] Real whispered speech (CHAINS / wTIMIT / own recordings)
 - [ ] Real scream / distress-call data (e.g. the AudioSet *Screaming* class)
 - [ ] Knock/tap detection via onset analysis, the most realistic signal from under rubble
