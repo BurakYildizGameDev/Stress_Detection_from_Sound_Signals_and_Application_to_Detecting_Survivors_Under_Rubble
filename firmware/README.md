@@ -165,7 +165,7 @@ beri geçen milisaniyedir; cihazda gerçek saat yok.
 | `type` | Ne zaman | Alanlar |
 |---|---|---|
 | `boot` | Açılışta | `mode`, `sample_rate`, ağaç sayıları, eşikler, `features` |
-| `status` | Saniyede bir | `windows`, `last_rms`, `last_status`, `inference_ms`, `overruns`, `open_episode`, `free_heap` |
+| `status` | Saniyede bir | `windows`, `last_rms`, `last_status`, `inference_ms`, `overruns` (düşen I2S okuması), `dropped_windows` (içinde örnek düştüğü için atılan pencere), `i2s_errors`, `open_episode`, `free_heap` |
 | `detection` | Acil durum penceresi | `episode`, `window`, `state`, `state_confidence`, `human_prob`, `emergency_prob` |
 | `alarm` | Bölümde 3. pencere | `episode`, `episode_start_ms`, `windows`, `states`, `peak_emergency_prob` |
 | `episode_end` | Normal konuşma / insan sesi yok | `episode`, `windows`, `alarmed` |
