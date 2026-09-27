@@ -2,56 +2,21 @@
   "corpus": {
     "clean": {
       "n": 1840,
-      "accuracy": 0.9119565217391304,
-      "macro_f1": 0.847169497886583,
-      "false_alarm_rate": 0.3181818181818182,
-      "miss_rate": 0.033602150537634407,
-      "per_class": {
-        "human": {
-          "precision": 0.927741935483871,
-          "recall": 0.9663978494623656,
-          "f1": 0.9466754443712969,
-          "support": 1488
-        },
-        "non_human": {
-          "precision": 0.8275862068965517,
-          "recall": 0.6818181818181818,
-          "f1": 0.7476635514018691,
-          "support": 352
-        }
-      },
-      "labels": [
-        "human",
-        "non_human"
-      ],
-      "confusion_matrix": [
-        [
-          1438,
-          50
-        ],
-        [
-          112,
-          240
-        ]
-      ]
-    },
-    "rubble_physical_medium": {
-      "n": 1840,
-      "accuracy": 0.878804347826087,
-      "macro_f1": 0.798633641510758,
-      "false_alarm_rate": 0.3522727272727273,
+      "accuracy": 0.9217391304347826,
+      "macro_f1": 0.8803725355279484,
+      "false_alarm_rate": 0.1278409090909091,
       "miss_rate": 0.06653225806451613,
       "per_class": {
         "human": {
-          "precision": 0.9180436219431592,
+          "precision": 0.9686192468619247,
           "recall": 0.9334677419354839,
-          "f1": 0.9256914361879374,
+          "f1": 0.9507186858316222,
           "support": 1488
         },
         "non_human": {
-          "precision": 0.6972477064220184,
-          "recall": 0.6477272727272727,
-          "f1": 0.6715758468335787,
+          "precision": 0.7561576354679803,
+          "recall": 0.8721590909090909,
+          "f1": 0.8100263852242744,
           "support": 352
         }
       },
@@ -65,8 +30,43 @@
           99
         ],
         [
-          124,
-          228
+          45,
+          307
+        ]
+      ]
+    },
+    "rubble_physical_medium": {
+      "n": 1840,
+      "accuracy": 0.8706521739130435,
+      "macro_f1": 0.8088924033508417,
+      "false_alarm_rate": 0.21022727272727273,
+      "miss_rate": 0.11021505376344086,
+      "per_class": {
+        "human": {
+          "precision": 0.9470672389127325,
+          "recall": 0.8897849462365591,
+          "f1": 0.9175329175329175,
+          "support": 1488
+        },
+        "non_human": {
+          "precision": 0.6289592760180995,
+          "recall": 0.7897727272727273,
+          "f1": 0.7002518891687658,
+          "support": 352
+        }
+      },
+      "labels": [
+        "human",
+        "non_human"
+      ],
+      "confusion_matrix": [
+        [
+          1324,
+          164
+        ],
+        [
+          74,
+          278
         ]
       ]
     }
@@ -84,25 +84,25 @@
       },
       "dsp_whisper": {
         "n": 228,
-        "accuracy": 0.9912280701754386,
+        "accuracy": 0.9780701754385965,
         "predictions": {
           "human": {
-            "human": 226,
-            "non_human": 2
+            "human": 223,
+            "non_human": 5
           }
         }
       },
       "none": {
         "n": 1359,
-        "accuracy": 0.8822663723325975,
+        "accuracy": 0.8977189109639441,
         "predictions": {
           "human": {
-            "human": 959,
-            "non_human": 48
+            "human": 913,
+            "non_human": 94
           },
           "non_human": {
-            "human": 112,
-            "non_human": 240
+            "non_human": 307,
+            "human": 45
           }
         }
       }
@@ -110,35 +110,35 @@
     "rubble_physical_medium": {
       "dsp_moan": {
         "n": 253,
-        "accuracy": 0.9960474308300395,
+        "accuracy": 0.9841897233201581,
         "predictions": {
           "human": {
-            "human": 252,
-            "non_human": 1
+            "human": 249,
+            "non_human": 4
           }
         }
       },
       "dsp_whisper": {
         "n": 228,
-        "accuracy": 0.9868421052631579,
+        "accuracy": 0.956140350877193,
         "predictions": {
           "human": {
-            "human": 225,
-            "non_human": 3
+            "human": 218,
+            "non_human": 10
           }
         }
       },
       "none": {
         "n": 1359,
-        "accuracy": 0.8388520971302428,
+        "accuracy": 0.8351729212656365,
         "predictions": {
           "human": {
-            "human": 912,
-            "non_human": 95
+            "human": 857,
+            "non_human": 150
           },
           "non_human": {
-            "human": 124,
-            "non_human": 228
+            "human": 74,
+            "non_human": 278
           }
         }
       }
@@ -157,21 +157,21 @@
       },
       "esc50": {
         "n": 352,
-        "accuracy": 0.6818181818181818,
+        "accuracy": 0.8721590909090909,
         "predictions": {
           "non_human": {
-            "human": 112,
-            "non_human": 240
+            "non_human": 307,
+            "human": 45
           }
         }
       },
       "esc50_vocal": {
         "n": 48,
-        "accuracy": 0.8125,
+        "accuracy": 0.7083333333333334,
         "predictions": {
           "human": {
-            "human": 39,
-            "non_human": 9
+            "human": 34,
+            "non_human": 14
           }
         }
       },
@@ -186,11 +186,11 @@
       },
       "nonspeech7k": {
         "n": 176,
-        "accuracy": 0.8011363636363636,
+        "accuracy": 0.6079545454545454,
         "predictions": {
           "human": {
-            "human": 141,
-            "non_human": 35
+            "human": 107,
+            "non_human": 69
           }
         }
       },
@@ -233,11 +233,11 @@
       },
       "vocalsound": {
         "n": 302,
-        "accuracy": 0.9900662251655629,
+        "accuracy": 0.9668874172185431,
         "predictions": {
           "human": {
-            "human": 299,
-            "non_human": 3
+            "human": 292,
+            "non_human": 10
           }
         }
       }
@@ -245,30 +245,31 @@
     "rubble_physical_medium": {
       "berlin": {
         "n": 64,
-        "accuracy": 1.0,
+        "accuracy": 0.96875,
         "predictions": {
           "human": {
-            "human": 64
+            "human": 62,
+            "non_human": 2
           }
         }
       },
       "esc50": {
         "n": 352,
-        "accuracy": 0.6477272727272727,
+        "accuracy": 0.7897727272727273,
         "predictions": {
           "non_human": {
-            "human": 124,
-            "non_human": 228
+            "human": 74,
+            "non_human": 278
           }
         }
       },
       "esc50_vocal": {
         "n": 48,
-        "accuracy": 0.7916666666666666,
+        "accuracy": 0.6666666666666666,
         "predictions": {
           "human": {
-            "non_human": 10,
-            "human": 38
+            "non_human": 16,
+            "human": 32
           }
         }
       },
@@ -284,11 +285,11 @@
       },
       "nonspeech7k": {
         "n": 176,
-        "accuracy": 0.6931818181818182,
+        "accuracy": 0.5340909090909091,
         "predictions": {
           "human": {
-            "non_human": 54,
-            "human": 122
+            "non_human": 82,
+            "human": 94
           }
         }
       },
@@ -312,10 +313,11 @@
       },
       "subesco": {
         "n": 64,
-        "accuracy": 1.0,
+        "accuracy": 0.984375,
         "predictions": {
           "human": {
-            "human": 64
+            "human": 63,
+            "non_human": 1
           }
         }
       },
@@ -330,11 +332,11 @@
       },
       "vocalsound": {
         "n": 302,
-        "accuracy": 0.9006622516556292,
+        "accuracy": 0.8410596026490066,
         "predictions": {
           "human": {
-            "human": 272,
-            "non_human": 30
+            "human": 254,
+            "non_human": 48
           }
         }
       }
@@ -344,22 +346,121 @@
     "vivae": {
       "clean": {
         "n": 300,
-        "accuracy": 0.88,
+        "accuracy": 0.55,
         "predictions": {
           "human": {
-            "human": 264,
-            "non_human": 36
+            "human": 165,
+            "non_human": 135
           }
         }
       },
       "rubble_physical_medium": {
         "n": 300,
-        "accuracy": 0.7833333333333333,
+        "accuracy": 0.44333333333333336,
         "predictions": {
           "human": {
-            "human": 235,
-            "non_human": 65
+            "human": 133,
+            "non_human": 167
           }
+        }
+      }
+    }
+  },
+  "threshold": {
+    "value": 0.45,
+    "target_false_alarm": 0.2,
+    "selected_on": "15% of train groups held out (not test)",
+    "test_accuracy_by_dataset": {
+      "clean": {
+        "berlin": {
+          "n": 64,
+          "accuracy": 1.0
+        },
+        "esc50": {
+          "n": 352,
+          "accuracy": 0.8153409090909091
+        },
+        "esc50_vocal": {
+          "n": 48,
+          "accuracy": 0.7291666666666666
+        },
+        "jl_corpus": {
+          "n": 60,
+          "accuracy": 1.0
+        },
+        "nonspeech7k": {
+          "n": 176,
+          "accuracy": 0.6931818181818182
+        },
+        "ravdess": {
+          "n": 71,
+          "accuracy": 1.0
+        },
+        "savee": {
+          "n": 78,
+          "accuracy": 1.0
+        },
+        "subesco": {
+          "n": 64,
+          "accuracy": 0.984375
+        },
+        "tess": {
+          "n": 144,
+          "accuracy": 1.0
+        },
+        "vivae": {
+          "n": 300,
+          "accuracy": 0.7033333333333334
+        },
+        "vocalsound": {
+          "n": 302,
+          "accuracy": 0.9801324503311258
+        }
+      },
+      "rubble_physical_medium": {
+        "berlin": {
+          "n": 64,
+          "accuracy": 0.984375
+        },
+        "esc50": {
+          "n": 352,
+          "accuracy": 0.7556818181818182
+        },
+        "esc50_vocal": {
+          "n": 48,
+          "accuracy": 0.6875
+        },
+        "jl_corpus": {
+          "n": 60,
+          "accuracy": 0.9833333333333333
+        },
+        "nonspeech7k": {
+          "n": 176,
+          "accuracy": 0.6022727272727273
+        },
+        "ravdess": {
+          "n": 71,
+          "accuracy": 1.0
+        },
+        "savee": {
+          "n": 78,
+          "accuracy": 1.0
+        },
+        "subesco": {
+          "n": 64,
+          "accuracy": 0.984375
+        },
+        "tess": {
+          "n": 144,
+          "accuracy": 1.0
+        },
+        "vivae": {
+          "n": 300,
+          "accuracy": 0.5733333333333334
+        },
+        "vocalsound": {
+          "n": 302,
+          "accuracy": 0.8774834437086093
         }
       }
     }

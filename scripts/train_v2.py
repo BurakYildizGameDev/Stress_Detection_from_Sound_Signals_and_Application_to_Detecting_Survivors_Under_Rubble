@@ -72,6 +72,50 @@ def make_model_v2(task, class_weight="cost"):
                                   class_weight=weights, random_state=42, n_jobs=-1)
 
 
+# Operatörün taşıyabileceği yanlış alarm oranı (saha kararı): %20'de gerçek
+# sözsüz vokalizasyonların ~%70'i yakalanır, %10'da yalnızca ~%40'ı.
+TARGET_FALSE_ALARM = 0.20
+
+
+def choose_human_threshold(d, train, target_fa=TARGET_FALSE_ALARM, val_fraction=0.15, seed=42):
+    """İnsan-sesi eşiğini test verisine bakmadan seçer: eğitim gruplarının bir
+    kısmı doğrulamaya ayrılır, model onlarsız eğitilir ve doğrulamadaki insan dışı
+    orijinal kliplerde yanlış alarm oranını target_fa altında tutan en düşük eşik
+    seçilir (en düşük eşik = en az kaçırma)."""
+    groups = sorted(set(d["group"][train]))
+    rng = np.random.default_rng(seed)
+    val_groups = set(rng.choice(groups, size=max(1, int(len(groups) * val_fraction)), replace=False))
+    is_val = np.isin(d["group"], sorted(val_groups)) & train
+    fit = train & ~is_val
+    model = make_model_v2("human").fit(d["X"][fit], d["y"][fit])
+    val = is_val & (d["transform"] == "original") & (d["synth"] == "none")
+    p_human = model.predict_proba(d["X"][val])[:, list(model.classes_).index("human")]
+    y = d["y"][val]
+    neg, pos = y == "non_human", y == "human"
+    for t in np.round(np.arange(0.05, 1.0, 0.01), 2):
+        if np.mean(p_human[neg] >= t) <= target_fa:
+            rec = float(np.mean(p_human[pos] >= t))
+            print(f"eşik {t:.2f}: doğrulamada yanlış alarm {np.mean(p_human[neg] >= t):.3f}, "
+                  f"insan recall {rec:.3f} (n_neg={neg.sum()}, n_pos={pos.sum()})")
+            return float(t)
+    return 0.5
+
+
+def threshold_table(d, model, threshold):
+    """Seçilen eşikte test sonuçları (argmax yerine olasılık eşiği)."""
+    p_human = model.predict_proba(d["X"])[:, list(model.classes_).index("human")]
+    pred = np.where(p_human >= threshold, "human", "non_human")
+    test = (d["split"] == "test") & (d["synth"] == "none")
+    out = {}
+    for cond in dict.fromkeys(d["condition"][test].tolist()):
+        at = test & (d["condition"] == cond)
+        out[cond] = {ds: {"n": int((at & (d["dataset"] == ds)).sum()),
+                          "accuracy": float(np.mean(pred[at & (d["dataset"] == ds)]
+                                                    == d["y"][at & (d["dataset"] == ds)]))}
+                     for ds in sorted(set(d["dataset"][at]))}
+    return out
+
+
 def prediction_counts(y_true, y_pred):
     """Tek sınıflı dış veri için: her gerçek sınıf hangi sınıflara tahmin edildi."""
     return {str(t): dict(Counter(y_pred[y_true == t].tolist())) for t in sorted(set(y_true))}
@@ -135,7 +179,7 @@ def print_report(task, report):
             print(f"  {cond:24s} n={r['n']:4d} doğruluk {r['accuracy']:.3f}  {r['predictions']}")
 
 
-def train_task_v2(task, class_weight="cost", save=True):
+def train_task_v2(task, class_weight="cost", save=True, target_fa=TARGET_FALSE_ALARM):
     d = load_features_v2(task)
     train = d["split"] == "train"
     print(f"\n=== {task}_v2 (sınıf ağırlığı: {class_weight if task == 'emergency' else 'balanced'}) ===")
@@ -143,9 +187,17 @@ def train_task_v2(task, class_weight="cost", save=True):
           f"test: {(~train).sum()} satır ({len(set(d['group'][~train]))} konuşmacı/grup)")
     print("train sınıfları:", dict(Counter(d["y"][train].tolist())))
 
+    threshold = choose_human_threshold(d, train, target_fa) if task == "human" else None
     model = make_model_v2(task, class_weight).fit(d["X"][train], d["y"][train])
     report = evaluate(task, model, d)
     print_report(task, report)
+    if threshold is not None:
+        report["threshold"] = {"value": threshold, "target_false_alarm": target_fa,
+                               "selected_on": "15% of train groups held out (not test)",
+                               "test_accuracy_by_dataset": threshold_table(d, model, threshold)}
+        print(f"\nSeçilen eşik {threshold:.2f} ile test doğruluğu (veri seti bazında):")
+        for cond, per_ds in report["threshold"]["test_accuracy_by_dataset"].items():
+            print(f"  {cond:24s} " + "  ".join(f"{ds} {r['accuracy']:.2f}" for ds, r in per_ds.items()))
 
     os.makedirs(REPORTS_DIR, exist_ok=True)
     suffix = "" if class_weight == "cost" or task == "human" else f"_{class_weight}"
@@ -173,6 +225,7 @@ def train_task_v2(task, class_weight="cost", save=True):
         "eval_protocol": "held-out speakers; synthetic whisper/moan from test speakers; "
                          "fixed rubble conditions; eval_only datasets as external real data",
         "metrics_clean": report["corpus"].get("clean"),
+        "human_threshold": threshold,
         "report": os.path.relpath(report_path, ROOT).replace(os.sep, "/"),
     }
     with open(os.path.splitext(model_path)[0] + ".json", "w", encoding="utf-8") as f:
@@ -189,9 +242,12 @@ def main():
     p.add_argument("--task", choices=TASKS + ("all",), default="all")
     p.add_argument("--class-weight", choices=("cost", "balanced"), default="cost")
     p.add_argument("--no-save", action="store_true", help="modeli kaydetme, yalnızca raporla")
+    p.add_argument("--target-false-alarm", type=float, default=TARGET_FALSE_ALARM,
+                   help="insan-sesi eşiği seçilirken doğrulamada izin verilen yanlış alarm oranı")
     args = p.parse_args()
     for t in TASKS if args.task == "all" else (args.task,):
-        train_task_v2(t, args.class_weight, save=not args.no_save)
+        train_task_v2(t, args.class_weight, save=not args.no_save,
+                      target_fa=args.target_false_alarm)
 
 
 if __name__ == "__main__":

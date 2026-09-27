@@ -33,7 +33,9 @@ from features_v2 import (
 SR = HUMAN_SR
 WINDOW_SEC = 1.0
 RMS_SILENCE_THRESHOLD = 0.0015
-HUMAN_PROB_THRESHOLD = 0.20
+# Model meta verisinde eşik yoksa kullanılır. train_v2.py eşiği doğrulama
+# verisinde yanlış alarm <= %10 olacak şekilde seçip .json'a yazar.
+HUMAN_PROB_THRESHOLD = 0.50
 EMERGENCY_PROB_THRESHOLD = 0.45
 
 BASE_DIR = os.path.dirname(os.path.abspath(__file__))
@@ -55,8 +57,10 @@ ALERT_PRIORITY = {
 
 
 class PipelineV2:
-    def __init__(self, human_model=None, emergency_model=None, models_dir=MODELS_DIR):
+    def __init__(self, human_model=None, emergency_model=None, models_dir=MODELS_DIR,
+                 human_threshold=HUMAN_PROB_THRESHOLD):
         self.models_dir = models_dir
+        self.human_threshold = human_threshold
         self.human_model = human_model
         self.emergency_model = emergency_model
         self._load_if_needed()
@@ -66,6 +70,10 @@ class PipelineV2:
             path_h = os.path.join(self.models_dir, MODEL_FILES_V2["human"])
             if os.path.exists(path_h):
                 self.human_model = joblib.load(path_h)
+                meta_path = os.path.splitext(path_h)[0] + ".json"
+                if os.path.exists(meta_path):
+                    with open(meta_path, encoding="utf-8") as f:
+                        self.human_threshold = json.load(f).get("human_threshold") or HUMAN_PROB_THRESHOLD
 
         if self.emergency_model is None:
             path_e = os.path.join(self.models_dir, MODEL_FILES_V2["emergency"])
@@ -103,7 +111,7 @@ class PipelineV2:
         h_idx = classes_h.index("human") if "human" in classes_h else 1
         human_prob = float(human_probs[h_idx])
 
-        if human_prob < HUMAN_PROB_THRESHOLD:
+        if human_prob < self.human_threshold:
             return {
                 "status": "no_human",
                 "human_prob": human_prob,

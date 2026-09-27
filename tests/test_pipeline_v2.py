@@ -139,3 +139,24 @@ def test_pipeline_v2_file_mode(tmp_path):
 
     assert res["status"] == "DETECTED"
     assert res["state"] == "whisper"
+
+
+def test_pipeline_v2_human_threshold_is_respected():
+    mock_human = DummyClassifier(["human", "non_human"], [0.4, 0.6])
+    mock_emerg = DummyClassifier(["moan", "normal", "panic", "stress", "whisper"],
+                                 [0.8, 0.05, 0.05, 0.05, 0.05])
+    strict = PipelineV2(human_model=mock_human, emergency_model=mock_emerg, human_threshold=0.5)
+    loose = PipelineV2(human_model=mock_human, emergency_model=mock_emerg, human_threshold=0.3)
+    assert strict.analyze_audio_array(tone())["status"] == "no_human"
+    assert loose.analyze_audio_array(tone())["state"] == "moan"
+
+
+def test_pipeline_v2_reads_threshold_from_metadata(tmp_path):
+    import json
+    import joblib
+    from pipeline_v2 import MODEL_FILES_V2
+    joblib.dump(DummyClassifier(["human", "non_human"], [0.5, 0.5]),
+                tmp_path / MODEL_FILES_V2["human"])
+    (tmp_path / MODEL_FILES_V2["human"].replace(".pkl", ".json")).write_text(
+        json.dumps({"human_threshold": 0.73}), encoding="utf-8")
+    assert PipelineV2(models_dir=str(tmp_path)).human_threshold == 0.73
