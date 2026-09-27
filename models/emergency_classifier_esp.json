@@ -27,6 +27,7 @@
   "flash_bytes": 431176,
   "flash_measured": true,
   "human_threshold": null,
+  "emergency_threshold": 0.45,
   "metrics": {
     "clean": {
       "macro_f1": 0.7720401069794913,

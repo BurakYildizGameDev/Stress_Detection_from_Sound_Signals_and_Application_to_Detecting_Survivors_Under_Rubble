@@ -14,5 +14,8 @@ sounddevice>=0.4.6
 streamlit>=1.46
 pandas>=2.0
 
+# ESP32 serial bridge (scripts/esp_serial_bridge.py)
+pyserial>=3.5
+
 # Tests
 pytest>=8

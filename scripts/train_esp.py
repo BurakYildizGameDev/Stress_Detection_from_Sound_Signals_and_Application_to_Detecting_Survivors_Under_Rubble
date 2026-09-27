@@ -52,7 +52,7 @@ sys.path.insert(0, os.path.dirname(os.path.dirname(os.path.abspath(__file__))))
 from dataset import EVAL_ONLY_DATASETS, MODELS_DIR, ROOT
 from evaluation import summarize
 from features_v2 import FEATURE_SPECS_V2
-from pipeline_v2 import MODEL_FILES_V2
+from pipeline_v2 import EMERGENCY_PROB_THRESHOLD, MODEL_FILES_V2
 from scripts.export_c_model import export_random_forest_to_c
 from scripts.train_v2 import (LABELS, TARGET_FALSE_ALARM, choose_human_threshold,
                               load_features_v2)
@@ -276,6 +276,7 @@ def run_task(task, target_fa, cc_cmd, save):
             "flash_bytes": best["flash_bytes"],
             "flash_measured": best["flash_measured"],
             "human_threshold": best["threshold"],
+            "emergency_threshold": EMERGENCY_PROB_THRESHOLD if task == "emergency" else None,
             "metrics": best["metrics"],
             "reference_v2_metrics": ref and ref["metrics"],
             "c_name": C_NAMES[task],
