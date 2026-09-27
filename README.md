@@ -139,7 +139,7 @@ the code.
 │
 ├── docs/EVALUATION.md       # evaluation protocols and field-test plan
 ├── models/                  # trained models (Git LFS) + metadata
-├── deneme sesleri/          # sample clips for a quick try
+├── samples/                 # sample clips for a quick try
 └── tests/                   # pytest suite
 ```
 
@@ -169,7 +169,7 @@ is and what to run.
 ### Analyse a file
 
 ```bash
-python audio_input.py "deneme sesleri/peopleTalk.mp3"
+python audio_input.py samples/people_talk.mp3
 ```
 
 ### Listen in real time
@@ -367,10 +367,10 @@ On an unseen corpus the miss rate rises to 0.42 (Berlin) and 0.31 (SUBESCO).
 
 | Clip | Result | Verdict |
 |---|---|---|
-| `peopleTalk.mp3` | 3 normal, 1 stress, 1 panic | ⚠️ 2 emergency windows (no alarm: not 3 in a row) |
-| `carstart.mp3` | no human | ✅ |
+| `people_talk.mp3` | 3 normal, 1 stress, 1 panic | ⚠️ 2 emergency windows (no alarm: not 3 in a row) |
+| `car_start.mp3` | no human | ✅ |
 | `bird.mp3` | 5/5 windows flagged as emergency | ❌ false alarm |
-| `deneme woman scream.mp3` | mostly "no human", 1 stress window | ❌ missed |
+| `woman_scream.mp3` | mostly "no human", 1 stress window | ❌ missed |
 
 ### Previous model, for comparison
 

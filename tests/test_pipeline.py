@@ -28,7 +28,7 @@ def test_silence_is_not_analyzed():
 
 
 def test_analyze_file_returns_known_status():
-    path = os.path.join(os.path.dirname(pipeline.__file__), "deneme sesleri", "carstart.mp3")
+    path = os.path.join(os.path.dirname(pipeline.__file__), "samples", "car_start.mp3")
     res = pipeline.analyze_file(path)
     assert res["status"] in {"silence", "no_human", "DETECTED"}
 
