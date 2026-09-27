@@ -36,7 +36,7 @@ from tqdm import tqdm
 
 sys.path.insert(0, os.path.dirname(os.path.dirname(os.path.abspath(__file__))))
 
-from augment import AUGMENTATIONS, CONDITIONS
+from augment import AUGMENTATIONS, CONDITIONS, pitch_shift
 from augment_rubble import random_rubble
 from dataset import (EVAL_ONLY_DATASETS, FEATURES_DIR, MANIFEST_PATH, NONVERBAL_DATASETS,
                      ROOT, SPLIT_SEED, file_sha256, read_manifest)
@@ -48,6 +48,17 @@ TASKS = ("emergency", "human")
 TEST_CONDITIONS = ("clean", "rubble_physical_mild", "rubble_physical_medium",
                    "rubble_physical_severe")
 SPEECH_CLASSES = ("normal", "stress", "panic")
+
+# İnsan-sesi görevinde insan dışı eğitim kliplerine ek artırmalar. Sözsüz insan
+# sesleri eklendikten sonra hayvan ve su sesleri insan sanılmaya başladı; bu
+# zor negatiflerin daha çeşitli örnekleri modele bu ayrımı öğretir.
+EXTRA_NON_HUMAN_AUG_V2 = {
+    "pitch_up3": lambda y, sr, rng: pitch_shift(y, sr, 3),
+    "pitch_down3": lambda y, sr, rng: pitch_shift(y, sr, -3),
+    "stretch_fast": lambda y, sr, rng: librosa.effects.time_stretch(y, rate=1.25).astype(np.float32),
+    "stretch_slow": lambda y, sr, rng: librosa.effects.time_stretch(y, rate=0.8).astype(np.float32),
+    "rubble_random2": random_rubble,
+}
 
 
 def features_path_v2(task):
@@ -121,7 +132,10 @@ def process_row_v2(task, rec, label, augment, conditions=TEST_CONDITIONS):
                         "rubble_random", synth, "train", lab))
             if synth == "none":
                 role = "human" if task == "emergency" else rec.role
-                for name, fn in AUGMENTATIONS[role].items():
+                augs = dict(AUGMENTATIONS[role])
+                if role == "non_human":
+                    augs.update(EXTRA_NON_HUMAN_AUG_V2)
+                for name, fn in augs.items():
                     out.append((func(fn(sig, sr, rng_for(name)), sr), name, synth, "train", lab))
     else:
         for synth, sig, lab in sources:

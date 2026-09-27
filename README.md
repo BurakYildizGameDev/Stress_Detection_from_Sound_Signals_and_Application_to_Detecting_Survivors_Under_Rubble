@@ -408,22 +408,29 @@ What this shows:
    clips (moans, screams, groans) were classified `non_human` by v2, and 97% by v1, so a
    survivor who moans instead of talking never reached stage 2. Retraining with
    non-verbal human sounds (ESC-50 breathing/coughing/crying/snoring, VocalSound,
-   Nonspeech7k test part, grouped by source recording) fixes most of this, at a cost
-   (`--quick` run: clean + medium rubble only):
+   Nonspeech7k test part, grouped by source recording) fixes most of this, at the cost
+   of false alarms on animal and water sounds (`--quick` run: clean + medium rubble):
 
-   | Human detector v2, threshold 0.5 | speech-only | + non-verbal |
-   |---|---|---|
-   | VIVAE recall, clean / medium rubble | 0.05 / 0.18 | **0.88 / 0.78** |
-   | VIVAE pain (moans) recall, clean | – | 43 / 50 |
-   | Nonspeech7k test recall (screams 8/10, crying 68/72, breath 20/47) | – | 0.80 |
-   | Acted speech recall | 0.99 | 1.00 |
-   | **ESC-50 false-alarm rate**, clean | 0.045 | **0.318** |
+   | Human detector v2 (test set) | speech-only | + non-verbal | + hard negatives, threshold 0.45 |
+   |---|---|---|---|
+   | VIVAE real vocalisations, clean / medium rubble | 0.05 / 0.18 | 0.88 / 0.78 | **0.70 / 0.57** |
+   | Nonspeech7k test (screams, crying, breath...) | – | 0.80 | 0.69 |
+   | Acted speech | 0.99 | 1.00 | 0.98–1.00 |
+   | ESC-50 false-alarm rate, clean / medium rubble | 0.045 | 0.32 / 0.35 | **0.18 / 0.24** |
 
-   The new false alarms are mostly animals (pig, cat, cow, dog, rooster, sheep, frog)
-   and water/drinking sounds. The threshold trades one for the other: at 0.6 false
-   alarms drop to 0.20 and VIVAE recall to 0.67; at 0.8, 0.04 and 0.12. Note that
-   `pipeline_v2.HUMAN_PROB_THRESHOLD` is 0.20, where the false-alarm rate is 0.65.
-   More non-human training data (1408 ESC-50 clips vs ~19k human rows) is the next fix.
+   Extra augmentation of the non-human clips (pitch ±3, time-stretch, a second rubble
+   variant) did **not** improve separability: at equal false-alarm rates the two models
+   are within 1–3 points (0.32 → 0.88 vs 0.89, 0.10 → 0.38 vs 0.40). It only moved the
+   default operating point. MFCC statistics + random forest seem to hit a ceiling on
+   "animal call vs. human moan"; pretrained audio embeddings are the next step.
+
+   The threshold is no longer hard-coded: `train_v2.py` holds out 15% of the training
+   groups, and picks the lowest threshold whose false-alarm rate there is ≤ 20%
+   (`--target-false-alarm`). It chose 0.45 without looking at the test set.
+   `pipeline_v2` reads it from `models/human_detector_v2.json` (it used to be a fixed 0.20,
+   which gave a 0.65 false-alarm rate). 20% was chosen as a field trade-off: the
+   operator confirms every alarm by ear, and at 10% only ~40% of real moans are caught.
+
 3. Cost-sensitive class weights (whisper 8×, moan 6×) did not raise whisper/moan
    recall over `class_weight="balanced"` (0.97 in both) but raised the false-alarm rate
    from 0.169 to 0.232 (`reports/emergency_v2_balanced.json`).
@@ -467,7 +474,7 @@ These are stated openly on purpose:
 - [x] Loudness-normalised features (v2)
 - [x] External real-data test set (VIVAE) and a folder for field recordings ([docs/REAL_DATA.md](docs/REAL_DATA.md))
 - [x] Human detector trained with non-verbal vocalisations (moans, screams) as `human`
-- [ ] More non-human data (animals, rubble-site noise) to bring the new false alarms down
+- [ ] Separate animal calls from human moans (18% false alarms at 70% recall): pretrained embeddings, more non-human data
 - [ ] Real whispered speech (CHAINS / wTIMIT / own recordings)
 - [ ] Real scream / distress-call data (e.g. the AudioSet *Screaming* class)
 - [ ] Knock/tap detection via onset analysis, the most realistic signal from under rubble
