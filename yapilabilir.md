@@ -42,7 +42,7 @@ Durum (2026-09-28):
 | 3.1 | **Öznitelik önbelleği** (dosya + dönüşüm → öznitelik) | Her çalıştırma her şeyi baştan hesaplıyor (~25–30 dk). Önbellekle yeni veri seti eklemek dakikalar sürer |
 | 3.2 | Fısıltı sentezini hızlandırma | LPC her karede Python döngüsüyle hesaplanıyor; en yavaş adım bu |
 | 3.3 | v1/v2 kod tekrarını birleştirme | `features`/`features_v2`, `pipeline`/`pipeline_v2`, `train`/`train_v2` paralel kopyalar |
-| 3.4 | GitHub Actions ile CI | 95 test var ama otomatik çalışmıyor |
+| 3.4 | ~~GitHub Actions ile CI~~ | ESP-5'te eklendi (`.github/workflows/ci.yml`) |
 | 3.5 | Temizlik | Eski kök scriptler, `data_emergency/`, `DEPREM_PROJESI_PROBLEMLER.md`, `data/_downloads/` (silme işlemini elle yapın) |
 | 3.6 | `v2-real-eval` dalını `main`'e birleştirme (PR) | Model `.pkl` dosyaları commit'lenmedi (54 + 6 MB, LFS), scriptlerle yeniden üretilebilir |
 
@@ -57,7 +57,7 @@ bir prototip. İş fazlara bölündü:
 | ESP-2 | **Küçük model** (`scripts/train_esp.py`, `reports/esp_model_sweep.json`): ağaç sayısı x derinlik x sınıf ağırlığı taraması, flash boyutu gerçekten derlenerek ölçüldü (ARM Thumb `-Os`, Xtensa değil; yaklaşık). Seçilen: insan 10 ağaç / derinlik 12, 230 KB (dengeli doğruluk 0.836, tam v2 0.845; ama VIVAE recall 0.70 -> 0.50). Acil durum 10 ağaç / derinlik 12, ağırlıksız, 421 KB (macro-F1 temiz 0.77 / ağır enkaz 0.50, tam v2 0.80 / 0.45; yanlış alarm 0.14, tam v2 0.23). v2 maliyet ağırlıkları küçük modellerde normal konuşmanın %59'unu acil durum yaptı, bu yüzden kullanılmadı. C çıktısı sklearn ile birebir (fark < 2e-7) | Bitti |
 | ESP-3 | **Firmware iskeleti** (`firmware/`, bkz. `firmware/README.md`): PlatformIO, INMP441 I2S, kayıt ve çıkarım görevleri, iki aşamalı karar ve alarm takibi (saf C, `pipeline_v2` ve `events.AlarmTracker` ile birebir test edildi), seri porttan JSON, panele köprü (`scripts/esp_serial_bridge.py`, `--replay` ile donanımsız). `pio run` henüz denenmedi (ESP-5 CI) | Bitti |
 | ESP-4 | **C'de öznitelik çıkarımı**: librosa ile birebir MFCC (reflect padding, Slaney mel, `top_db=80`, ortho DCT), düzlük, HNR (sadece 44–441 gecikmeleri, tam korelasyon ESP'de saniyeler sürer), altın vektör testleri. İki örnekleme hızı (22.05 / 16 kHz) sorunu | |
-| ESP-5 | **CI ve belgeler**: GitHub Actions (`pytest` + `pio run`), README'de "prototip, donanımda test edilmedi" bölümü, bağlantı tablosu, malzeme listesi | |
+| ESP-5 | **CI ve belgeler**: `.github/workflows/ci.yml` (Ubuntu'da `pytest` + gcc ile C testleri, `pio run` ile firmware derlemesi), README'de "Embedded prototype" bölümü ve sınırlamalar. Bağlantı tablosu ve malzeme listesi `firmware/README.md`'de | Bitti (CI ilk push'ta doğrulanacak) |
 
 Açık notlar:
 
