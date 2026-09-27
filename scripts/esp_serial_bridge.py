@@ -73,6 +73,8 @@ class EspBridge:
             "open_episode": self.episode_id(msg["open_episode"]) if msg.get("open_episode") else None,
             "inference_ms": msg.get("inference_ms"),
             "overruns": msg.get("overruns"),
+            "dropped_windows": msg.get("dropped_windows"),
+            "i2s_errors": msg.get("i2s_errors"),
             "error": self.error,
         }
 

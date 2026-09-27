@@ -45,7 +45,11 @@ static volatile uint32_t windows_processed = 0;
 static volatile float last_rms = 0.0f;
 static volatile rubble_status_t last_status = RUBBLE_SILENCE;
 static volatile uint32_t last_inference_us = 0;
-static volatile uint32_t overruns = 0;  // tampon dolduğu için düşen okuma sayısı
+static volatile uint32_t overruns = 0;         // tampon dolduğu için düşen I2S okuması
+static volatile uint32_t i2s_errors = 0;       // i2s_read hata sayısı
+static volatile uint32_t dropped_windows = 0;  // içinde örnek düşen, atılan pencere
+// tracker yalnızca çıkarım görevinde değişir; loop() bu kopyayı okur
+static volatile uint32_t open_episode = 0;
 
 static void print_line(const char* line) {
     if (serial_lock) xSemaphoreTake(serial_lock, portMAX_DELAY);
@@ -53,7 +57,6 @@ static void print_line(const char* line) {
     if (serial_lock) xSemaphoreGive(serial_lock);
 }
 
-#ifndef RUBBLE_SIM_SCENARIO
 static void fatal(const char* msg) {
     char buf[160];
     snprintf(buf, sizeof(buf), "{\"type\":\"error\",\"message\":\"%s\"}", msg);
@@ -62,7 +65,13 @@ static void fatal(const char* msg) {
         delay(5000);
     }
 }
-#endif
+
+static void start_task(TaskFunction_t fn, const char* name, uint32_t stack, UBaseType_t prio,
+                       BaseType_t core) {
+    if (xTaskCreatePinnedToCore(fn, name, stack, nullptr, prio, nullptr, core) != pdPASS) {
+        fatal("görev oluşturulamadı");
+    }
+}
 
 // Pencere sonucunu alarm takibinden geçirir, olayları yazar, alarmda LED'i yakar.
 static void handle_result(const rubble_result_t* r, uint32_t inference_us) {
@@ -74,6 +83,7 @@ static void handle_result(const rubble_result_t* r, uint32_t inference_us) {
     rubble_event_t events[RUBBLE_MAX_EVENTS];
     uint32_t now = millis();
     int n = rubble_tracker_update(&tracker, r, now, events);
+    open_episode = tracker.episode;
     for (int i = 0; i < n; i++) {
         char buf[320];
         if (rubble_event_to_json(&events[i], emergency_classifier_class_names,
@@ -137,7 +147,7 @@ static void scenario_task(void*) {
 }
 
 static void start_audio() {
-    xTaskCreatePinnedToCore(scenario_task, "scenario", 8192, nullptr, 3, nullptr, 1);
+    start_task(scenario_task, "scenario", 8192, 3, 1);
 }
 
 #else
@@ -181,17 +191,27 @@ static void capture_task(void*) {
     static float samples[I2S_READ_SAMPLES];
     for (;;) {
         size_t bytes_read = 0;
-        i2s_read(I2S_NUM_0, raw, sizeof(raw), &bytes_read, portMAX_DELAY);
+        if (i2s_read(I2S_NUM_0, raw, sizeof(raw), &bytes_read, portMAX_DELAY) != ESP_OK) {
+            i2s_errors = i2s_errors + 1;
+            vTaskDelay(pdMS_TO_TICKS(10));
+            continue;
+        }
         size_t n = bytes_read / sizeof(int32_t);
+        if (n == 0) continue;
         for (size_t i = 0; i < n; i++) {
             // 24 bit işaretli veri üst bitlerde; [-1, 1) aralığına ölçekle.
             // Mutlak seviye RMS_SILENCE_THRESHOLD'u etkiler: kalibrasyon gerekir.
             samples[i] = (float)(raw[i] >> 8) / 8388608.0f;
         }
+        // Ya tamamı ya hiçbiri: xStreamBufferSend yer kadarını yazar ve 4'ün katı
+        // olmayan kısmi yazım sonraki bütün float örnekleri kaydırırdı. Tek yazan
+        // bu görev olduğu için kontrol ile yazım arasında boş yer azalamaz.
         size_t want = n * sizeof(float);
-        if (xStreamBufferSend(audio_stream, samples, want, 0) != want) {
+        if (xStreamBufferSpacesAvailable(audio_stream) < want) {
             overruns = overruns + 1;
+            continue;
         }
+        xStreamBufferSend(audio_stream, samples, want, 0);
     }
 }
 
@@ -208,9 +228,16 @@ static void inference_task(void*) {
         // Tam bir pencere dolana kadar bekle
         size_t got = 0;
         const size_t need = WINDOW_SAMPLES * sizeof(float);
+        uint32_t overruns_before = overruns;
         while (got < need) {
             got += xStreamBufferReceive(audio_stream, (uint8_t*)window_buf + got, need - got,
                                         portMAX_DELAY);
+        }
+        // Pencere dolarken örnek düştüyse içinde boşluk var: 1 sn'lik kesintisiz ses
+        // değil, özniteliklere verilmez.
+        if (overruns != overruns_before) {
+            dropped_windows = dropped_windows + 1;
+            continue;
         }
         uint32_t t0 = micros();
         rubble_result_t r;
@@ -227,8 +254,8 @@ static void start_audio() {
     if (!window_buf || !audio_stream) fatal("bellek ayrılamadı");
     if (!i2s_setup()) fatal("I2S başlatılamadı");
 
-    xTaskCreatePinnedToCore(capture_task, "capture", 4096, nullptr, 5, nullptr, 0);
-    xTaskCreatePinnedToCore(inference_task, "inference", 8192, nullptr, 3, nullptr, 1);
+    start_task(capture_task, "capture", 4096, 5, 0);
+    start_task(inference_task, "inference", 8192, 3, 1);
 }
 #endif
 
@@ -270,10 +297,12 @@ void loop() {
         snprintf(buf, sizeof(buf),
                  "{\"type\":\"status\",\"t_ms\":%lu,\"windows\":%lu,\"last_rms\":%.5f,"
                  "\"last_status\":\"%s\",\"inference_ms\":%.1f,\"overruns\":%lu,"
+                 "\"dropped_windows\":%lu,\"i2s_errors\":%lu,"
                  "\"open_episode\":%lu,\"free_heap\":%lu}",
                  (unsigned long)now, (unsigned long)windows_processed, (double)last_rms,
                  rubble_status_name(last_status), last_inference_us / 1000.0,
-                 (unsigned long)overruns, (unsigned long)tracker.episode,
+                 (unsigned long)overruns, (unsigned long)dropped_windows,
+                 (unsigned long)i2s_errors, (unsigned long)open_episode,
                  (unsigned long)ESP.getFreeHeap());
         print_line(buf);
     }
