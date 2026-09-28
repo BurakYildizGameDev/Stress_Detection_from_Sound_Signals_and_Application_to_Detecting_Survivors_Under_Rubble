@@ -772,6 +772,16 @@ These are stated openly on purpose:
 
 ---
 
+## About the commit history
+
+The first version of this project was developed between November 2025 and April 2026 in a different
+repository. Those commits were made at the time, with their original dates; the history was later moved
+into this repository and pushed in one go. That is why the commit dates are older than the date this
+repository was created on GitHub. The September 2026 work (v2 and the embedded prototype) was committed
+directly here.
+
+---
+
 ## License
 
 The code is released under the [MIT License](LICENSE). The datasets keep their own
