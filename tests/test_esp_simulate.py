@@ -24,6 +24,69 @@ def test_simulator_matches_python_pipeline_on_real_audio():
     assert {"silence", "no_human", "DETECTED"} <= statuses  # araya konan sessizlik de dahil
 
 
+MODEL_CHECK = r"""
+#include <stdio.h>
+#include "human_detector_model.h"
+#include "emergency_classifier_model.h"
+int main(void) {
+    char kind[4];
+    float f[64], p[8];
+    while (scanf("%3s", kind) == 1) {
+        int emerg = kind[0] == 'E';
+        int nf = emerg ? EMERGENCY_CLASSIFIER_NUM_FEATURES : HUMAN_DETECTOR_NUM_FEATURES;
+        for (int i = 0; i < nf; i++) if (scanf("%f", &f[i]) != 1) return 2;
+        int nc = emerg ? EMERGENCY_CLASSIFIER_NUM_CLASSES : HUMAN_DETECTOR_NUM_CLASSES;
+        int best = emerg ? emergency_classifier_predict(f, p) : human_detector_predict(f, p);
+        printf("%d", best);
+        for (int c = 0; c < nc; c++) printf(" %.9g", p[c]);
+        printf("\n");
+    }
+    return 0;
+}
+"""
+
+
+@needs_cc
+def test_committed_esp_headers_match_sklearn_on_real_features(tmp_path):
+    # Repodaki model başlıkları, ESP .pkl'leriyle gerçek ses özniteliklerinden
+    # türetilen girdilerde aynı olasılığı ve aynı sınıfı vermeli (yakın olasılıklı
+    # beraberlik adayları dahil).
+    import joblib
+    import numpy as np
+    from scripts.esp_simulate import MODELS, load_windows, window_features
+
+    paths = [os.path.join(ROOT, "samples", f) for f in
+             ("woman_scream.mp3", "people_talk.mp3", "bird.mp3", "car_start.mp3")]
+    windows, _ = load_windows(paths, gap_sec=0)
+    feats = [window_features(y) for y in windows]
+    rng = np.random.default_rng(0)
+
+    def perturb(base, n):
+        rows = base[rng.integers(0, len(base), n)]
+        return (rows * (1 + rng.normal(0, 0.05, rows.shape))).astype(np.float32)
+
+    H = perturb(np.array([h for h, _ in feats]), 1000)
+    E = perturb(np.array([e for _, e in feats]), 1000)
+
+    src = tmp_path / "models.c"
+    src.write_text(MODEL_CHECK, encoding="utf-8")
+    exe = tmp_path / ("models.exe" if os.name == "nt" else "models")
+    subprocess.run(CC + ["-std=c99", "-O1", "-I", INCLUDE_DIR, "-o", str(exe), str(src)],
+                   check=True, capture_output=True, text=True)
+    stdin = "".join("H " + " ".join(f"{v:.9g}" for v in r) + "\n" for r in H)
+    stdin += "".join("E " + " ".join(f"{v:.9g}" for v in r) + "\n" for r in E)
+    out = subprocess.run([str(exe)], input=stdin, capture_output=True, text=True, check=True).stdout
+    rows = [line.split() for line in out.strip().splitlines()]
+    c_best = np.array([int(r[0]) for r in rows])
+
+    for X, key, sl in ((H, "human", slice(0, 1000)), (E, "emergency", slice(1000, 2000))):
+        model = joblib.load(MODELS[key])
+        c_probs = np.array([[float(v) for v in r[1:]] for r in rows[sl]])
+        py_probs = model.predict_proba(X)
+        np.testing.assert_allclose(c_probs, py_probs, atol=1e-5)
+        np.testing.assert_array_equal(c_best[sl], np.argmax(py_probs, axis=1))
+
+
 SCENARIO_CHECK = r"""
 #include <stdio.h>
 #include <string.h>
