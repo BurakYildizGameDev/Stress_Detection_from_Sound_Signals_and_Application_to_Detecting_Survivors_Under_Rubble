@@ -1,6 +1,6 @@
 {
   "created": "2026-09-27T23:52:35+00:00",
-  "flash_compiler": "C:\\Users\\Burak\\AppData\\Local\\Temp\\claude\\C--Users-Burak-Desktop-Github-Stress-Detection-from-Sound-Signals-and-Application-to-Detecting-Survivors-Under-Rubble\\6aa9098c-63f3-447e-ba97-fe3e7bb5c84f\\scratchpad\\zig\\ziglang\\zig.exe cc -target thumb-freestanding-eabi -mcpu=cortex_m4 -Os",
+  "flash_compiler": "zig.exe cc -target thumb-freestanding-eabi -mcpu=cortex_m4 -Os",
   "flash_note": "ölçüm verilen derleyicinin nesne dosyasıdır, ESP32-S3 (Xtensa) değil; yaklaşık",
   "human": {
     "budget_kb": 512,

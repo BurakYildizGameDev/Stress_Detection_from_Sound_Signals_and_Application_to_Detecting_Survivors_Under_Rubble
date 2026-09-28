@@ -51,7 +51,7 @@ Gerçek kart ve mikrofon kullanılmadı. Her katman bir öncekinin kapsamadığ�
 | 1. C birim testleri (`tests/test_firmware_core.py`, `tests/test_c_model_export.py`) | Karar mantığı, alarm takibi, RMS, JSON, dışa aktarılan modeller | `lib/rubble_core` ve modeller bilgisayarda derlenip gerçek Python koduyla karşılaştırılır: `PipelineV2` (400 durum), `AlarmTracker` (1.500 rastgele pencere), `librosa.feature.rms`, sklearn `predict_proba` (18.036 test satırı) | Birebir aynı (olasılık farkı < 2e-7) |
 | 2. Bilgisayar simülatörü (`scripts/esp_simulate.py`) | Firmware hattının gerçek ses kayıtlarındaki davranışı | Ses dosyası -> 1 sn pencereler -> öznitelikler (Python) -> cihazın C kodu -> olaylar; her pencere Python hattıyla karşılaştırılır | Repodaki 4 örnekte 26/26 pencere aynı (`reports/esp_simulation.json`) |
 | 3. Wokwi (simüle ESP32-S3) | Firmware'in gerçek Xtensa kodu olarak açılması, FreeRTOS görevleri, modellerin cihaz işlemcisinde çalışması, seri çıktı, alarm LED'i | `pio run -e wokwi`; 19 pencerelik senaryo saniyede bir oynatılır, cihaz her kararı bilgisayar simülatörünün sonucuyla karşılaştırır, sonunda `SIM_DONE OK` basar | Senaryo firmware'i CI'da derleniyor; Wokwi'de çalıştırma bir Wokwi hesabı gerektirir (VS Code ya da CI token'ı, aşağıda) |
-| 4. CI derlemesi | Mikrofon firmware'inin ESP32-S3 için derlenmesi | GitHub Actions, `pio run` | Flash 1.08 MB / 3 MB, statik RAM 23 KB |
+| 4. CI derlemesi | Mikrofon firmware'inin ESP32-S3 için derlenmesi | GitHub Actions, `pio run` | Flash 1.52 MB / 3 MB (%48), statik RAM 23 KB |
 
 Simülasyonların **sınamadığı** şeyler: I2S mikrofon sürücüsü ve INMP441 ayarları
 (Wokwi ESP32-S3'te I2S ve mikrofon simüle etmiyor), gerçek zamanlama ve bellek

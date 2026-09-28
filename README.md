@@ -466,7 +466,7 @@ and only sends events. Details: [firmware/README.md](firmware/README.md).
 | C export of the Random Forests (`scripts/export_c_model.py`) | Compiled C matches `predict_proba` (max difference < 2e-7 on 18k test rows); two models can be linked together |
 | Small models (`scripts/train_esp.py`) | v2 models are 0.9M / 2.3M nodes (tens of MB of code). ESP models: 25 trees, depth 10 each, **414 KB + 670 KB** (model object size, compiled with `-Os` for a 32-bit ARM target as a proxy, not Xtensa). The size/depth/class-weight configuration is chosen on validation speakers (15% of train); the test split is evaluated once, for the chosen model only |
 | Decision + alarm logic (`firmware/lib/rubble_core`, C99) | Tested against `pipeline_v2` and `events.AlarmTracker` on the host |
-| Firmware (`firmware/src/main.cpp`) | I2S capture, FreeRTOS tasks, JSON over serial. Compiled in CI for ESP32-S3 (flash 1.08 MB of 3 MB, both models included), never run on a board |
+| Firmware (`firmware/src/main.cpp`) | I2S capture, FreeRTOS tasks, JSON over serial. Compiled in CI for ESP32-S3 (flash 1.52 MB of 3 MB, both models included), never run on a board |
 | Dashboard link (`scripts/esp_serial_bridge.py`) | Writes device events to the dashboard logs; `--replay` works without hardware |
 | Host simulator (`scripts/esp_simulate.py`) | Runs the firmware's C decision path on real audio files, compares every window with the Python pipeline |
 | Wokwi simulation (`firmware/wokwi.toml`, `diagram.json`) | Simulated ESP32-S3 + alarm LED; replays 19 windows of precomputed features and checks each decision on the device |
@@ -479,7 +479,7 @@ How it was tested without hardware:
 | C unit tests | Decision, alarm tracker, RMS, JSON and exported models compiled on the host and compared with `PipelineV2`, `AlarmTracker`, `librosa.feature.rms` and sklearn | Identical (probabilities within 2e-7) |
 | Host simulator | Firmware behaviour on the repo's sample recordings | 26/26 windows identical to the Python pipeline ([reports/esp_simulation.json](reports/esp_simulation.json)) |
 | Wokwi | Firmware running as Xtensa code with FreeRTOS tasks, models on the device CPU, serial output, alarm LED | Scenario firmware builds in CI; running it needs a Wokwi account (VS Code or a `WOKWI_CLI_TOKEN` CI secret) |
-| CI build | Microphone firmware for ESP32-S3 | Flash 1.08 MB of 3 MB |
+| CI build | Microphone firmware for ESP32-S3 | Flash 1.52 MB of 3 MB (48%); the model-size proxy predicted the +433 KB growth from the previous models, the real Xtensa build grew by 435 KB |
 
 Not covered by any simulation: the I2S microphone driver (Wokwi does not
 simulate I2S or microphones on the ESP32-S3), real timing, power, and on-device
