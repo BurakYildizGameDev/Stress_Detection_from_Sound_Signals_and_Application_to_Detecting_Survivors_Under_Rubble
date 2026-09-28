@@ -557,3 +557,9 @@ These are stated openly on purpose:
 
 The code is released under the [MIT License](LICENSE). The datasets keep their own
 licenses; see the table above or run `python scripts/download_data.py --list`.
+
+The trained models in `models/` (and the C headers generated from them in
+`firmware/include/`) are derived from those datasets, several of which allow
+non-commercial use only (CC BY-NC / BY-NC-SA, SAVEE: research only). Treat the
+models as non-commercial research artifacts; the MIT license covers the code, not
+the models. The clips in `samples/` come from free (CC0) sound libraries.
