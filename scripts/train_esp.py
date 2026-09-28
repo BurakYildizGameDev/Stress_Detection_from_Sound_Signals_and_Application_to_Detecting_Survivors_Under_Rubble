@@ -360,7 +360,8 @@ def main():
             report = json.load(f)
     report.update({
         "created": datetime.now(timezone.utc).isoformat(timespec="seconds"),
-        "flash_compiler": args.flash_cc,
+        # yerel yol yazılmaz (kullanıcı adı / geçici klasör): yalnızca derleyici adı + bayraklar
+        "flash_compiler": " ".join([os.path.basename(cc_cmd[0])] + cc_cmd[1:]) if cc_cmd else None,
         "flash_note": "ölçüm verilen derleyicinin nesne dosyasıdır, ESP32-S3 (Xtensa) değil; yaklaşık"
                       if args.flash_cc else f"düğüm x {BYTES_PER_NODE} bayt tahmini",
     })
