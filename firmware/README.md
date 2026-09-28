@@ -48,7 +48,7 @@ Gerçek kart ve mikrofon kullanılmadı. Her katman bir öncekinin kapsamadığ�
 
 | Katman | Ne sınanıyor | Nasıl | Sonuç |
 |---|---|---|---|
-| 1. C birim testleri (`tests/test_firmware_core.py`, `tests/test_c_model_export.py`) | Karar mantığı, alarm takibi, RMS, JSON, dışa aktarılan modeller | `lib/rubble_core` ve modeller bilgisayarda derlenip gerçek Python koduyla karşılaştırılır: `PipelineV2` (400 durum), `AlarmTracker` (1.500 rastgele pencere), `librosa.feature.rms`, sklearn `predict_proba` (18.036 test satırı) | Birebir aynı (olasılık farkı < 2e-7) |
+| 1. C birim testleri (`tests/test_firmware_core.py`, `tests/test_c_model_export.py`, `tests/test_esp_simulate.py`) | Karar mantığı, alarm takibi, RMS, JSON, dışa aktarılan modeller (NaN dahil) | `lib/rubble_core` ve modeller bilgisayarda derlenip gerçek Python koduyla karşılaştırılır: `PipelineV2` (400 durum), `AlarmTracker` (1.500 rastgele pencere), `librosa.feature.rms`, sklearn `predict_proba` (repodaki ESP başlıkları: 18.036 test satırı ve gerçek seslerden türetilen 2.000 girdi, 87'si yakın beraberlik) | Birebir aynı (olasılık farkı < 3e-7, sınıf kararı aynı) |
 | 2. Bilgisayar simülatörü (`scripts/esp_simulate.py`) | Firmware hattının gerçek ses kayıtlarındaki davranışı | Ses dosyası -> 1 sn pencereler -> öznitelikler (Python) -> cihazın C kodu -> olaylar; her pencere Python hattıyla karşılaştırılır | Repodaki 4 örnekte 26/26 pencere aynı (`reports/esp_simulation.json`) |
 | 3. Wokwi (simüle ESP32-S3) | Firmware'in gerçek Xtensa kodu olarak açılması, FreeRTOS görevleri, modellerin cihaz işlemcisinde çalışması, seri çıktı, alarm LED'i | `pio run -e wokwi`; 19 pencerelik senaryo saniyede bir oynatılır, cihaz her kararı bilgisayar simülatörünün sonucuyla karşılaştırır, sonunda `SIM_DONE OK` basar | Senaryo firmware'i CI'da derleniyor; Wokwi'de çalıştırma bir Wokwi hesabı gerektirir (VS Code ya da CI token'ı, aşağıda) |
 | 4. CI derlemesi | Mikrofon firmware'inin ESP32-S3 için derlenmesi | GitHub Actions, `pio run` | Flash 1.52 MB / 3 MB (%48), statik RAM 23 KB |
@@ -203,6 +203,18 @@ Planın geri kalanı `yapilabilir.md` bölüm 4'te.
 - **Doğruluk.** Küçük modeller tam v2 modellerinden zayıf; gerçek
   inleme/çığlık yakalama 0.70'ten 0.53'e düşüyor
   (`reports/esp_model_sweep.json`), simülatörde kuş sesi yanlış alarm veriyor.
+- **Model seçimi ile raporlanan ölçüt farklı.** ESP modelleri doğrulama
+  konuşmacılarında temiz + `rubble_random` (eğitimdeki rastgele enkaz
+  artırması) puanıyla seçildi; raporlanan test puanı ise sabit
+  `rubble_physical_severe` koşulunu kullanıyor. Doğrulama puanının ağır enkaz
+  performansını ne kadar öngördüğü ölçülmedi.
+- **Doğrulama eşiği.** İnsan eşiği (0.43) %85'lik doğrulama modelinde yanlış
+  alarm <= %20 hedefiyle seçildi ve tüm eğitim verisiyle kurulan son modele
+  uygulandı; hedef son modelde garanti değil. Geçerli sonuç testteki orandır
+  (0.18).
+- **NaN girdiler.** Dışa aktarılan C ağaçları NaN'ı sklearn gibi her düğümde
+  `missing_go_to_left` yönüne gönderir (test edildi). Bu, derleyicinin IEEE
+  karşılaştırmalarını koruduğunu varsayar; `-ffast-math` ile derlenmemelidir.
 - **Eşik sınırı.** C olasılıkları float32, Python float64 hesaplar (fark
   ~1e-7). Acil durum eşiği (0.45) hiçbir zaman sınırda değildir: en olası sınıf
   normal değilse acil durum olasılığı en az 0.5'tir. Fark yalnızca sınıf

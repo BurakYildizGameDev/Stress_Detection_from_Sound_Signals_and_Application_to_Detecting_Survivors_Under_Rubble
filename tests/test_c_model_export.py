@@ -134,6 +134,28 @@ def test_compiled_c_matches_sklearn(tmp_path, n_classes, scale):
 
 
 @needs_cc
+@pytest.mark.parametrize("nan_in_training", [False, True])
+def test_compiled_c_routes_nan_like_sklearn(tmp_path, nan_in_training):
+    # sklearn NaN'ı her düğümde missing_go_to_left yönüne gönderir (eğitimde NaN
+    # yoksa çok örnekli çocuğa); C'de "x <= t" NaN'ı hep sağa gönderirdi.
+    rng = np.random.default_rng(3)
+    X = rng.standard_normal((400, 5)).astype(np.float32)
+    y = rng.integers(0, 3, size=400)
+    if nan_in_training:
+        X[rng.uniform(size=X.shape) < 0.2] = np.nan
+    clf = RandomForestClassifier(n_estimators=15, max_depth=6, random_state=0).fit(X, y)
+    assert any(e.tree_.missing_go_to_left.any() for e in clf.estimators_)
+
+    X_test = rng.standard_normal((300, 5)).astype(np.float32)
+    X_test[rng.uniform(size=X_test.shape) < 0.3] = np.nan
+    stdin = "\n".join(" ".join(f"{v:.9g}" for v in row) for row in X_test) + "\n"
+    out = _compile_and_run(tmp_path, {"m_model.h": export_random_forest_to_c(clf, model_name="m")},
+                           PREDICT_MAIN.format(header="m_model.h", P="M", name="m"), stdin)
+    c_probs = np.array([[float(v) for v in line.split()[1:]] for line in out.strip().splitlines()])
+    np.testing.assert_allclose(c_probs, clf.predict_proba(X_test), atol=1e-5)
+
+
+@needs_cc
 def test_two_models_in_one_translation_unit(tmp_path):
     human, _ = _fit(2, 4, n_estimators=3)
     emerg, _ = _fit(5, 6, n_estimators=3)

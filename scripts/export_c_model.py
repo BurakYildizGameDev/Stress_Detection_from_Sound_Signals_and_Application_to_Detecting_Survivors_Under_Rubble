@@ -73,14 +73,25 @@ def tree_to_c_code(tree, func_name):
     value = tree_.value
     left = tree_.children_left
     right = tree_.children_right
+    # sklearn >= 1.3: NaN her düğümde bu yöne gider (eğitimde NaN yoksa çok örnekli çocuğa)
+    missing_left = getattr(tree_, "missing_go_to_left", np.zeros(len(left), dtype=np.uint8))
 
     lines = [f"static void {func_name}(const float* f, float* votes) {{"]
 
     def recurse(node, depth):
         indent = "    " * depth
         if left[node] != right[node]:  # iç düğüm
-            t32 = float32_threshold(threshold[node])
-            lines.append(f"{indent}if (f[{feature[node]}] <= {c_float(t32)}) {{")
+            x = f"f[{feature[node]}]"
+            if np.isposinf(threshold[node]):
+                # Eğitimde NaN görülen "yalnızca eksik değer" bölmesi: NaN olmayan her
+                # değer sola; NaN missing_go_to_left'e göre ("x == x" NaN için yanlış).
+                cond = "1" if missing_left[node] else f"{x} == {x}"
+            else:
+                t32 = c_float(float32_threshold(threshold[node]))
+                # NaN ile her karşılaştırma yanlıştır: "x <= t" NaN'ı sağa, "!(x > t)"
+                # sola gönderir; NaN olmayan x için ikisi aynıdır. (-ffast-math bozar.)
+                cond = f"!({x} > {t32})" if missing_left[node] else f"{x} <= {t32}"
+            lines.append(f"{indent}if ({cond}) {{")
             recurse(left[node], depth + 1)
             lines.append(f"{indent}}} else {{")
             recurse(right[node], depth + 1)
