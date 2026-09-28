@@ -1,0 +1,65 @@
+{
+  "task": "human_esp",
+  "labels": [
+    "human",
+    "non_human"
+  ],
+  "feature_spec": {
+    "version": 3,
+    "sr": 22050,
+    "n_features": 33,
+    "clip_sec": 2.0,
+    "loudness_normalized": true,
+    "desc": "RMS-normalized: 13 MFCC mean + 13 MFCC std + ZCR + Flatness(mean/std) + Rolloff + Flux + HNR + SubBandRatio"
+  },
+  "sklearn_version": "1.8.0",
+  "created": "2026-09-27T23:53:19+00:00",
+  "params": {
+    "n_estimators": 25,
+    "max_depth": 10,
+    "min_samples_leaf": 5,
+    "class_weight": "balanced"
+  },
+  "nodes": 23005,
+  "flash_bytes": 424392,
+  "flash_measured": true,
+  "human_threshold": 0.43,
+  "emergency_threshold": null,
+  "selection": "validation groups (15% of train); test evaluated once",
+  "validation_metrics": {
+    "human_recall": 0.8644986449864499,
+    "false_alarm": 0.18779342723004694,
+    "balanced_accuracy": 0.8383526088782014,
+    "n": 582
+  },
+  "metrics": {
+    "clean": {
+      "human_recall": 0.8125478194338179,
+      "false_alarm": 0.18181818181818182,
+      "vivae_recall": 0.5266666666666666,
+      "balanced_accuracy": 0.8153648188078181
+    },
+    "rubble_physical_medium": {
+      "human_recall": 0.7872991583779648,
+      "false_alarm": 0.23579545454545456,
+      "vivae_recall": 0.5366666666666666,
+      "balanced_accuracy": 0.7757518519162552
+    }
+  },
+  "reference_v2_metrics": {
+    "clean": {
+      "human_recall": 0.8752869166029075,
+      "false_alarm": 0.1846590909090909,
+      "vivae_recall": 0.7033333333333334,
+      "balanced_accuracy": 0.8453139128469083
+    },
+    "rubble_physical_medium": {
+      "human_recall": 0.8064269319051263,
+      "false_alarm": 0.24431818181818182,
+      "vivae_recall": 0.5733333333333334,
+      "balanced_accuracy": 0.7810543750434722
+    }
+  },
+  "c_name": "human_detector",
+  "report": "reports/esp_model_sweep.json"
+}

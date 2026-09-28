@@ -1,0 +1,58 @@
+{
+  "task": "human_v2",
+  "labels": [
+    "human",
+    "non_human"
+  ],
+  "feature_spec": {
+    "version": 3,
+    "sr": 22050,
+    "n_features": 33,
+    "clip_sec": 2.0,
+    "loudness_normalized": true,
+    "desc": "RMS-normalized: 13 MFCC mean + 13 MFCC std + ZCR + Flatness(mean/std) + Rolloff + Flux + HNR + SubBandRatio"
+  },
+  "sklearn_version": "1.8.0",
+  "created": "2026-09-27T21:32:39+00:00",
+  "manifest_sha256": "121a370d0b2100d117eaba0944aa098451d60a3f760a8f14d07cbc536118702c",
+  "class_weight": "balanced",
+  "n_train_rows": 32993,
+  "eval_protocol": "held-out speakers; synthetic whisper/moan from test speakers; fixed rubble conditions; eval_only datasets as external real data",
+  "metrics_clean": {
+    "n": 1840,
+    "accuracy": 0.9217391304347826,
+    "macro_f1": 0.8803725355279484,
+    "false_alarm_rate": 0.1278409090909091,
+    "miss_rate": 0.06653225806451613,
+    "per_class": {
+      "human": {
+        "precision": 0.9686192468619247,
+        "recall": 0.9334677419354839,
+        "f1": 0.9507186858316222,
+        "support": 1488
+      },
+      "non_human": {
+        "precision": 0.7561576354679803,
+        "recall": 0.8721590909090909,
+        "f1": 0.8100263852242744,
+        "support": 352
+      }
+    },
+    "labels": [
+      "human",
+      "non_human"
+    ],
+    "confusion_matrix": [
+      [
+        1389,
+        99
+      ],
+      [
+        45,
+        307
+      ]
+    ]
+  },
+  "human_threshold": 0.45,
+  "report": "reports/human_v2.json"
+}

@@ -29,6 +29,11 @@ def parse(ds, name):
     ("savee", "KL_f12.wav", "KL", "fear"),
     ("jl_corpus", "female1_anxious_10a_1.wav", "female1", "anxious"),
     ("esc50", "1-100032-A-0.wav", "clip100032", "esc0"),
+    ("vivae", "S04_pain_moderate_10.wav", "S04", "pain_moderate"),
+    ("vocalsound", "f0003_0_cough.wav", "f0003", "cough"),
+    ("vocalsound", "m1234_2_throatclearing.wav", "m1234", "throatclearing"),
+    ("esc50_vocal", "5-200334-A-23.wav", "clip200334", "breathing"),
+    ("vivae", "S11_fear_peak_3.wav", "S11", "fear"),
 ])
 def test_parsers(ds, name, speaker, emotion):
     s, e, _ = parse(ds, name)
@@ -108,3 +113,37 @@ def test_esc50_uses_fold_5_as_test():
                rec("esc50", "clip2", "data/non-human/esc50/1-2-A-1.wav")]
     assign_splits(records)
     assert [r.split for r in records] == ["test", "train"]
+
+
+def test_vivae_only_mild_pain_is_moan():
+    from dataset import EMOTION_TO_CLASS_V2
+    assert EMOTION_TO_CLASS_V2["pain_low"] == EMOTION_TO_CLASS_V2["pain_moderate"] == "moan"
+    assert "pain_peak" not in EMOTION_TO_CLASS_V2       # zirve ağrı çığlıktır, inleme değil
+
+
+def test_field_label_comes_from_folder():
+    path = os.path.join("data", "human", "field", "whisper", "spk01", "utt1.wav")
+    assert DATASETS["field"].parse("utt1.wav", path)[:2] == ("spk01", "whisper")
+    with pytest.raises(Skip):
+        DATASETS["field"].parse("a.wav", os.path.join("field", "shout", "spk01", "a.wav"))
+
+
+def test_eval_only_datasets_are_all_test():
+    records = assign_splits([rec("vivae", f"S{i:02d}") for i in range(11)] +
+                            [rec("ravdess", f"s{i}") for i in range(10)])
+    assert {r.split for r in records if r.dataset == "vivae"} == {"test"}
+    assert {r.split for r in records if r.dataset == "ravdess"} == {"train", "test"}
+
+
+def test_esc50_is_split_between_human_vocal_and_non_human():
+    with pytest.raises(Skip):
+        parse("esc50_vocal", "1-100032-A-0.wav")        # köpek: insan değil
+    assert DATASETS["esc50_vocal"].role == "human"
+    records = assign_splits([rec("esc50_vocal", "clip1", path="a/5-1-A-23.wav"),
+                             rec("esc50_vocal", "clip2", path="a/1-2-A-24.wav")])
+    assert [r.split for r in records] == ["test", "train"]
+
+
+def test_nonverbal_datasets_never_reach_v1_emergency():
+    from dataset import V1_EXCLUDED_DATASETS
+    assert {"esc50_vocal", "vocalsound", "vivae"} <= V1_EXCLUDED_DATASETS

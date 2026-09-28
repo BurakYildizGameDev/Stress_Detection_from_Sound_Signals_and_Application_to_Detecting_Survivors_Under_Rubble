@@ -1,0 +1,114 @@
+{
+  "task": "emergency_v2",
+  "labels": [
+    "moan",
+    "normal",
+    "panic",
+    "stress",
+    "whisper"
+  ],
+  "feature_spec": {
+    "version": 3,
+    "sr": 16000,
+    "n_features": 19,
+    "clip_sec": null,
+    "loudness_normalized": true,
+    "desc": "RMS-normalized: 13 MFCC mean + Centroid + HNR + Flatness + SubBandRatio + Entropy + Flux"
+  },
+  "sklearn_version": "1.8.0",
+  "created": "2026-09-27T20:34:31+00:00",
+  "manifest_sha256": "bc27f8a054e65267dde3ef9db245dc181fdca0b4b6a91d2a6c9b038b0ab3eeb9",
+  "class_weight": {
+    "normal": 1.0,
+    "stress": 3.0,
+    "panic": 3.0,
+    "moan": 6.0,
+    "whisper": 8.0
+  },
+  "n_train_rows": 29764,
+  "eval_protocol": "held-out speakers; synthetic whisper/moan from test speakers; fixed rubble conditions; eval_only datasets as external real data",
+  "metrics_clean": {
+    "n": 3174,
+    "accuracy": 0.8386893509766856,
+    "macro_f1": 0.797540163867202,
+    "false_alarm_rate": 0.2323943661971831,
+    "miss_rate": 0.0249424405218726,
+    "per_class": {
+      "normal": {
+        "precision": 0.8702594810379242,
+        "recall": 0.7676056338028169,
+        "f1": 0.8157156220767072,
+        "support": 568
+      },
+      "stress": {
+        "precision": 0.6133004926108374,
+        "recall": 0.9154411764705882,
+        "f1": 0.7345132743362832,
+        "support": 544
+      },
+      "panic": {
+        "precision": 0.6187290969899666,
+        "recall": 0.3894736842105263,
+        "f1": 0.4780361757105943,
+        "support": 475
+      },
+      "moan": {
+        "precision": 1.0,
+        "recall": 0.9746070133010882,
+        "f1": 0.9871402327005512,
+        "support": 827
+      },
+      "whisper": {
+        "precision": 0.9748677248677249,
+        "recall": 0.9697368421052631,
+        "f1": 0.9722955145118733,
+        "support": 760
+      }
+    },
+    "labels": [
+      "normal",
+      "stress",
+      "panic",
+      "moan",
+      "whisper"
+    ],
+    "confusion_matrix": [
+      [
+        436,
+        41,
+        88,
+        0,
+        3
+      ],
+      [
+        26,
+        498,
+        19,
+        0,
+        1
+      ],
+      [
+        29,
+        256,
+        185,
+        0,
+        5
+      ],
+      [
+        4,
+        3,
+        4,
+        806,
+        10
+      ],
+      [
+        6,
+        14,
+        3,
+        0,
+        737
+      ]
+    ]
+  },
+  "report": "reports/emergency_v2.json"
+}

@@ -1,0 +1,79 @@
+name: CI
+
+on:
+  push:
+  pull_request:
+    branches: [main]
+  workflow_dispatch:
+
+jobs:
+  tests:
+    name: Python + C tests
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          lfs: true   # models/*.pkl (ESP models, header drift test)
+
+      - uses: actions/setup-python@v5
+        with:
+          python-version: "3.11"
+          cache: pip
+
+      - name: Install dependencies
+        run: pip install -r requirements.txt
+
+      # gcc is preinstalled: C exporter and firmware core tests run here
+      # (they are skipped on machines without a C compiler)
+      - name: Run tests
+        run: python -m pytest -q -rs
+
+  firmware:
+    name: Firmware build (ESP32-S3)
+    runs-on: ubuntu-latest
+    env:
+      # step-level env is not visible in that step's own `if:`
+      WOKWI_CLI_TOKEN: ${{ secrets.WOKWI_CLI_TOKEN }}
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: actions/setup-python@v5
+        with:
+          python-version: "3.11"
+
+      - uses: actions/cache@v4
+        with:
+          path: ~/.platformio
+          key: pio-${{ runner.os }}-${{ hashFiles('firmware/platformio.ini') }}
+
+      - name: Install PlatformIO
+        run: pip install platformio
+
+      - name: Build (microphone firmware)
+        run: pio run -d firmware -e esp32-s3-devkitc-1
+
+      - name: Build (Wokwi scenario firmware)
+        run: pio run -d firmware -e wokwi
+
+      # Wokwi runs only if the repository has a WOKWI_CLI_TOKEN secret
+      # (free: https://wokwi.com/dashboard/ci). The scenario replays 19 windows
+      # of precomputed features on the simulated ESP32-S3 and checks every
+      # decision against the host simulator.
+      - name: Run in Wokwi simulator
+        if: env.WOKWI_CLI_TOKEN != ''
+        uses: wokwi/wokwi-ci-action@v1
+        with:
+          token: ${{ secrets.WOKWI_CLI_TOKEN }}
+          path: firmware
+          timeout: 60000
+          expect_text: SIM_DONE OK
+          fail_text: SIM_DONE MISMATCH
+          serial_log_file: wokwi-serial.log
+
+      - name: Upload Wokwi serial log
+        if: always() && env.WOKWI_CLI_TOKEN != ''
+        uses: actions/upload-artifact@v4
+        with:
+          name: wokwi-serial-log
+          path: "**/wokwi-serial.log"
+          if-no-files-found: ignore

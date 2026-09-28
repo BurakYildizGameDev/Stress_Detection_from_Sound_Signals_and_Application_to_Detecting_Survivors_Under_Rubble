@@ -1,0 +1,148 @@
+{
+  "task": "emergency_esp",
+  "labels": [
+    "moan",
+    "normal",
+    "panic",
+    "stress",
+    "whisper"
+  ],
+  "feature_spec": {
+    "version": 3,
+    "sr": 16000,
+    "n_features": 19,
+    "clip_sec": null,
+    "loudness_normalized": true,
+    "desc": "RMS-normalized: 13 MFCC mean + Centroid + HNR + Flatness + SubBandRatio + Entropy + Flux"
+  },
+  "sklearn_version": "1.8.0",
+  "created": "2026-09-27T23:54:45+00:00",
+  "params": {
+    "n_estimators": 25,
+    "max_depth": 10,
+    "min_samples_leaf": 5,
+    "class_weight": "none"
+  },
+  "nodes": 23231,
+  "flash_bytes": 686506,
+  "flash_measured": true,
+  "human_threshold": null,
+  "emergency_threshold": 0.45,
+  "selection": "validation groups (15% of train); test evaluated once",
+  "validation_metrics": {
+    "clean": {
+      "macro_f1": 0.7786346276164953,
+      "false_alarm": 0.1902439024390244,
+      "miss": 0.06769230769230769,
+      "n": 1180
+    },
+    "rubble": {
+      "macro_f1": 0.48339106273788257,
+      "false_alarm": 0.7414634146341463,
+      "miss": 0.08102564102564103,
+      "n": 1180
+    }
+  },
+  "metrics": {
+    "clean": {
+      "macro_f1": 0.7997890318127593,
+      "false_alarm": 0.12147887323943662,
+      "miss": 0.043745203376822715,
+      "recall": {
+        "normal": 0.8785211267605634,
+        "stress": 0.8952205882352942,
+        "panic": 0.36,
+        "moan": 0.973397823458283,
+        "whisper": 0.9381578947368421
+      }
+    },
+    "rubble_physical_mild": {
+      "macro_f1": 0.4473710476035608,
+      "false_alarm": 0.778169014084507,
+      "miss": 0.01841903300076746,
+      "recall": {
+        "normal": 0.22183098591549297,
+        "stress": 0.29044117647058826,
+        "panic": 0.016842105263157894,
+        "moan": 0.905683192261185,
+        "whisper": 0.9592105263157895
+      }
+    },
+    "rubble_physical_medium": {
+      "macro_f1": 0.5520714179806026,
+      "false_alarm": 0.4084507042253521,
+      "miss": 0.06561780506523407,
+      "recall": {
+        "normal": 0.5915492957746479,
+        "stress": 0.46139705882352944,
+        "panic": 0.023157894736842106,
+        "moan": 0.8778718258766627,
+        "whisper": 0.9657894736842105
+      }
+    },
+    "rubble_physical_severe": {
+      "macro_f1": 0.4239808741216701,
+      "false_alarm": 0.704225352112676,
+      "miss": 0.0851880276285495,
+      "recall": {
+        "normal": 0.29577464788732394,
+        "stress": 0.19117647058823528,
+        "panic": 0.002105263157894737,
+        "moan": 0.9721886336154776,
+        "whisper": 0.875
+      }
+    }
+  },
+  "reference_v2_metrics": {
+    "clean": {
+      "macro_f1": 0.797540163867202,
+      "false_alarm": 0.2323943661971831,
+      "miss": 0.0249424405218726,
+      "recall": {
+        "normal": 0.7676056338028169,
+        "stress": 0.9154411764705882,
+        "panic": 0.3894736842105263,
+        "moan": 0.9746070133010882,
+        "whisper": 0.9697368421052631
+      }
+    },
+    "rubble_physical_mild": {
+      "macro_f1": 0.48560572769123034,
+      "false_alarm": 0.8045774647887324,
+      "miss": 0.01266308518802763,
+      "recall": {
+        "normal": 0.1954225352112676,
+        "stress": 0.36213235294117646,
+        "panic": 0.09473684210526316,
+        "moan": 0.8814993954050786,
+        "whisper": 0.9960526315789474
+      }
+    },
+    "rubble_physical_medium": {
+      "macro_f1": 0.5934293726135367,
+      "false_alarm": 0.5211267605633803,
+      "miss": 0.01841903300076746,
+      "recall": {
+        "normal": 0.4788732394366197,
+        "stress": 0.625,
+        "panic": 0.0968421052631579,
+        "moan": 0.8609431680773881,
+        "whisper": 0.9868421052631579
+      }
+    },
+    "rubble_physical_severe": {
+      "macro_f1": 0.4541624826999825,
+      "false_alarm": 0.8679577464788732,
+      "miss": 0.021872601688411358,
+      "recall": {
+        "normal": 0.13204225352112675,
+        "stress": 0.32536764705882354,
+        "panic": 0.06947368421052631,
+        "moan": 0.9806529625151149,
+        "whisper": 0.9263157894736842
+      }
+    }
+  },
+  "c_name": "emergency_classifier",
+  "report": "reports/esp_model_sweep.json"
+}

@@ -16,6 +16,7 @@ that lasts long enough raises a single operator alarm on a live dashboard.
 ![librosa](https://img.shields.io/badge/librosa-0.11-purple)
 ![Streamlit](https://img.shields.io/badge/dashboard-Streamlit-red)
 ![License](https://img.shields.io/badge/license-MIT-green)
+[![CI](https://github.com/BurakYildizGameDev/Stress_Detection_from_Sound_Signals_and_Application_to_Detecting_Survivors_Under_Rubble/actions/workflows/ci.yml/badge.svg)](https://github.com/BurakYildizGameDev/Stress_Detection_from_Sound_Signals_and_Application_to_Detecting_Survivors_Under_Rubble/actions/workflows/ci.yml)
 
 ---
 
@@ -29,6 +30,7 @@ that lasts long enough raises a single operator alarm on a live dashboard.
 - [Data](#data)
 - [Training](#training)
 - [Evaluation](#evaluation)
+- [Embedded prototype (ESP32-S3)](#embedded-prototype-esp32-s3)
 - [Known limitations](#known-limitations)
 - [Roadmap](#roadmap)
 - [License](#license)
@@ -135,7 +137,13 @@ the code.
 │   ├── extract_features.py  # 3. → features/{emergency,human}.npz
 │   ├── train.py             # 4. → models/*.pkl + models/*.json
 │   ├── evaluate.py          # 5. → reports/*.json
-│   └── prepare_training.py  # runs 1–3 (and 4–5 with --train) in one go
+│   ├── prepare_training.py  # runs 1–3 (and 4–5 with --train) in one go
+│   ├── train_esp.py         # small models that fit ESP32-S3 flash → models/*_esp.pkl
+│   ├── export_c_model.py    # Random Forest → dependency-free C header
+│   ├── esp_serial_bridge.py # ESP32 serial output → dashboard log files
+│   └── esp_simulate.py      # run the firmware's C decision path on audio files
+│
+├── firmware/                # ESP32-S3 + INMP441 prototype (PlatformIO), see firmware/README.md
 │
 ├── docs/EVALUATION.md       # evaluation protocols and field-test plan
 ├── models/                  # trained models (Git LFS) + metadata
@@ -209,6 +217,10 @@ result = analyze_file("recording.wav")
 python -m pytest tests
 ```
 
+Tests that compile C (model exporter, firmware core) need `gcc`/`clang` or a `CC`
+variable and are skipped otherwise. On Windows: `pip install ziglang` and
+`CC="python -m ziglang cc"`. CI runs everything on Ubuntu and builds the firmware.
+
 ---
 
 ## Data
@@ -232,6 +244,10 @@ python scripts/download_data.py tess      # a single dataset
 | [SAVEE](http://kahlan.eps.surrey.ac.uk/savee/) | English | human | research only | manual |
 | [JL-Corpus](https://www.kaggle.com/datasets/tli725/jl-corpus) | English (NZ) | human | CC0 | manual |
 | [ESC-50](https://github.com/karolpiczak/ESC-50) | — | non-human | CC BY-NC 3.0 | automatic |
+| [VIVAE](https://doi.org/10.5281/zenodo.4066235) | non-verbal | human, **test only** | CC BY-NC 4.0 | automatic |
+| [VocalSound](https://github.com/YuanGongND/vocalsound) | non-verbal | human (v2 only) | CC BY-SA 4.0 | automatic (~1.7 GB) |
+| [Nonspeech7k](https://doi.org/10.5281/zenodo.6967442) | non-verbal | human (v2 only) | CC BY-NC-SA 4.0 | automatic (~2.5 GB, slow) |
+| ESC-50 human vocal classes | non-verbal | human (v2 only) | CC BY-NC 3.0 | with ESC-50 |
 
 ### Manifest
 
@@ -379,6 +395,108 @@ with augmented copies on both sides, and 0.630 ± 0.11 in speaker-independent
 cross-validation. The random-split number was inflated by leakage; the new 0.666 on
 held-out speakers is the comparable figure.
 
+### v2 (5 classes: + whisper, moan) — experimental, not used by the live pipeline
+
+`python scripts/extract_features_v2.py --task all && python scripts/train_v2.py --task all`.
+Whisper and moan training data are **synthetic** (`whisper_converter.py`). Features are
+loudness-normalised, randomised rubble augmentation is applied to every class, and
+test rows come from unseen speakers under fixed rubble conditions. Real recordings
+that are never trained on ([VIVAE](docs/REAL_DATA.md): 89 mild-pain moans, 176 fear
+vocalisations) are reported separately. Full numbers: `reports/*_v2*.json`.
+
+| Test set (unseen speakers) | Emergency v2 macro-F1 | whisper recall | moan recall | normal recall |
+|---|---|---|---|---|
+| clean | 0.798 | 0.97 (synthetic) | 0.97 (synthetic) | 0.77 |
+| rubble mild / medium / severe | 0.49 / 0.59 / 0.45 | 0.93–1.00 | 0.86–0.98 | 0.13–0.48 |
+| **VIVAE real moans, clean** | — | — | **0 / 89** | — |
+
+What this shows:
+
+1. **The synthetic whisper/moan scores measure the converter, not real voices.** Real
+   moans from VIVAE are classified as `stress` (54) or `normal` (26), never `moan`.
+   Under simulated rubble more of them become `moan`, but so do real fear screams
+   (41/176 under severe rubble): the model has learned "low-passed audio = moan".
+2. **The speech-only human detector rejected non-verbal vocalisations.** 95% of VIVAE
+   clips (moans, screams, groans) were classified `non_human` by v2, and 97% by v1, so a
+   survivor who moans instead of talking never reached stage 2. Retraining with
+   non-verbal human sounds (ESC-50 breathing/coughing/crying/snoring, VocalSound,
+   Nonspeech7k test part, grouped by source recording) fixes most of this, at the cost
+   of false alarms on animal and water sounds (`--quick` run: clean + medium rubble):
+
+   | Human detector v2 (test set) | speech-only | + non-verbal | + hard negatives, threshold 0.45 |
+   |---|---|---|---|
+   | VIVAE real vocalisations, clean / medium rubble | 0.05 / 0.18 | 0.88 / 0.78 | **0.70 / 0.57** |
+   | Nonspeech7k test (screams, crying, breath...) | – | 0.80 | 0.69 |
+   | Acted speech | 0.99 | 1.00 | 0.98–1.00 |
+   | ESC-50 false-alarm rate, clean / medium rubble | 0.045 | 0.32 / 0.35 | **0.18 / 0.24** |
+
+   Extra augmentation of the non-human clips (pitch ±3, time-stretch, a second rubble
+   variant) did **not** improve separability: at equal false-alarm rates the two models
+   are within 1–3 points (0.32 → 0.88 vs 0.89, 0.10 → 0.38 vs 0.40). It only moved the
+   default operating point. MFCC statistics + random forest seem to hit a ceiling on
+   "animal call vs. human moan"; pretrained audio embeddings are the next step.
+
+   The threshold is no longer hard-coded: `train_v2.py` holds out 15% of the training
+   groups, and picks the lowest threshold whose false-alarm rate there is ≤ 20%
+   (`--target-false-alarm`). It chose 0.45 without looking at the test set.
+   `pipeline_v2` reads it from `models/human_detector_v2.json` (it used to be a fixed 0.20,
+   which gave a 0.65 false-alarm rate). 20% was chosen as a field trade-off: the
+   operator confirms every alarm by ear, and at 10% only ~40% of real moans are caught.
+
+3. Cost-sensitive class weights (whisper 8×, moan 6×) did not raise whisper/moan
+   recall over `class_weight="balanced"` (0.97 in both) but raised the false-alarm rate
+   from 0.169 to 0.232 (`reports/emergency_v2_balanced.json`).
+4. Rubble simulation still collapses the speech classes (normal recall 0.13–0.48).
+
+---
+
+## Embedded prototype (ESP32-S3)
+
+> **Prototype, verified in simulation only.** The firmware has never run on a
+> real board, and no hardware test is planned. It is tested in simulation
+> instead (below). On-device feature extraction is not written yet: in
+> simulation the features come from Python, and on a real microphone the
+> firmware could not classify audio yet.
+
+The goal is a microphone left in the debris that classifies audio on the device
+and only sends events. Details: [firmware/README.md](firmware/README.md).
+
+| Part | State |
+|---|---|
+| C export of the Random Forests (`scripts/export_c_model.py`) | Compiled C matches `predict_proba` (max difference < 3e-7 and identical class on all 18,036 test rows); NaN inputs are routed like sklearn; two models can be linked together |
+| Small models (`scripts/train_esp.py`) | v2 models are 0.9M / 2.3M nodes (tens of MB of code). ESP models: 25 trees, depth 10 each, **414 KB + 670 KB** (model object size, compiled with `-Os` for a 32-bit ARM target as a proxy, not Xtensa). The size/depth/class-weight configuration is chosen on validation speakers (15% of train); the test split is evaluated once, for the chosen model only |
+| Decision + alarm logic (`firmware/lib/rubble_core`, C99) | Tested against `pipeline_v2` and `events.AlarmTracker` on the host |
+| Firmware (`firmware/src/main.cpp`) | I2S capture, FreeRTOS tasks, JSON over serial. Compiled in CI for ESP32-S3 (flash 1.52 MB of 3 MB, both models included), never run on a board |
+| Dashboard link (`scripts/esp_serial_bridge.py`) | Writes device events to the dashboard logs; `--replay` works without hardware |
+| Host simulator (`scripts/esp_simulate.py`) | Runs the firmware's C decision path on real audio files, compares every window with the Python pipeline |
+| Wokwi simulation (`firmware/wokwi.toml`, `diagram.json`) | Simulated ESP32-S3 + alarm LED; replays 19 windows of precomputed features and checks each decision on the device |
+| On-device features (MFCC, HNR, …) | **Not written.** Must match librosa exactly |
+
+How it was tested without hardware:
+
+| Layer | What it checks | Result |
+|---|---|---|
+| C unit tests | Decision, alarm tracker, RMS, JSON and exported models compiled on the host and compared with `PipelineV2`, `AlarmTracker`, `librosa.feature.rms` and sklearn | Identical (probabilities within 3e-7) |
+| Host simulator | Firmware behaviour on the repo's sample recordings | 26/26 windows identical to the Python pipeline ([reports/esp_simulation.json](reports/esp_simulation.json)) |
+| Wokwi | Firmware running as Xtensa code with FreeRTOS tasks, models on the device CPU, serial output, alarm LED | Scenario firmware builds in CI; running it needs a Wokwi account (VS Code or a `WOKWI_CLI_TOKEN` CI secret) |
+| CI build | Microphone firmware for ESP32-S3 | Flash 1.52 MB of 3 MB (48%); the model-size proxy predicted the +433 KB growth from the previous models, the real Xtensa build grew by 435 KB |
+
+Not covered by any simulation: the I2S microphone driver (Wokwi does not
+simulate I2S or microphones on the ESP32-S3), real timing, power, and on-device
+feature extraction. Details and commands: [firmware/README.md](firmware/README.md).
+
+Accuracy of the small models vs. full v2 (`reports/esp_model_sweep.json`):
+
+| | Full v2 | ESP |
+|---|---|---|
+| Human detector, balanced accuracy / false alarms | 0.845 / 0.185 | 0.815 / 0.182 |
+| Human detector, real non-verbal vocalisations (VIVAE) recall | **0.70** | **0.53** |
+| Emergency, macro-F1 clean / severe rubble | 0.80 / 0.45 | 0.80 / 0.42 |
+| Emergency, false alarms on normal speech | 0.23 | 0.12 |
+
+The v2 cost weights (whisper ×8, moan ×6) made the small emergency models flag
+59–93% of normal speech, so the ESP models are trained without class weights.
+
 ---
 
 ## Known limitations
@@ -402,6 +520,10 @@ These are stated openly on purpose:
 7. **No rubble acoustics.** The robustness protocol only simulates noise,
    attenuation and low-pass filtering; nothing has been recorded through real
    debris.
+8. **The ESP32 firmware is verified in simulation only and is incomplete.** It
+   has never run on a board, cannot yet compute features on the device, and its
+   small models catch fewer real non-verbal vocalisations (0.53 vs 0.70); in the
+   host simulator a birdsong clip raises a false alarm.
 
 ---
 
@@ -414,14 +536,20 @@ These are stated openly on purpose:
 - [x] Evaluation with confusion matrix, false-alarm and miss rates
 - [x] Detections vs. alarms separated; dashboard controls the listener
 - [x] Retrain both models with the new pipeline and publish the reports here
-- [ ] Loudness-normalised features, so quiet/muffled voices are not read as calm
+- [x] Loudness-normalised features (v2)
+- [x] External real-data test set (VIVAE) and a folder for field recordings ([docs/REAL_DATA.md](docs/REAL_DATA.md))
+- [x] Human detector trained with non-verbal vocalisations (moans, screams) as `human`
+- [ ] Separate animal calls from human moans (18% false alarms at 70% recall): pretrained embeddings, more non-human data
+- [ ] Real whispered speech (CHAINS / wTIMIT / own recordings)
 - [ ] Real scream / distress-call data (e.g. the AudioSet *Screaming* class)
 - [ ] Knock/tap detection via onset analysis, the most realistic signal from under rubble
 - [ ] Pretrained audio embeddings (YAMNet / PANNs) as features
 - [ ] Room-impulse-response augmentation to simulate debris
 - [ ] Field tests from [docs/EVALUATION.md](docs/EVALUATION.md)
-- [ ] ONNX export for edge devices
-- [ ] GitHub Actions CI
+- [x] ESP32-S3 prototype: small models, C export, host-tested decision/alarm core, serial bridge
+- [x] GitHub Actions CI (tests + firmware build)
+- [ ] On-device feature extraction matching librosa (ESP32)
+- [ ] Run the firmware on real hardware; LoRa/ESP-NOW instead of USB serial
 
 ---
 
@@ -429,3 +557,9 @@ These are stated openly on purpose:
 
 The code is released under the [MIT License](LICENSE). The datasets keep their own
 licenses; see the table above or run `python scripts/download_data.py --list`.
+
+The trained models in `models/` (and the C headers generated from them in
+`firmware/include/`) are derived from those datasets, several of which allow
+non-commercial use only (CC BY-NC / BY-NC-SA, SAVEE: research only). Treat the
+models as non-commercial research artifacts; the MIT license covers the code, not
+the models. The clips in `samples/` come from free (CC0) sound libraries.

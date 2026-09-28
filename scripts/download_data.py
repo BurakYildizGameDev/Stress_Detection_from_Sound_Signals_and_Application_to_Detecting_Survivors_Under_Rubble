@@ -11,6 +11,7 @@ Kullanım:
 
 Klasör yapısı ve lisanslar dataset.py'deki DATASETS tablosundan gelir:
     data/human/{berlin,ravdess,tess,subesco,savee,jl_corpus}/
+    data/human/{vivae,field}/   (yalnızca test, bkz. docs/REAL_DATA.md)
     data/non-human/esc50/
 
 Sonraki adım: python scripts/build_manifest.py
@@ -53,6 +54,23 @@ DATASETS = {
         "url": "https://github.com/karoldvl/ESC-50/archive/master.zip",
         "zip_subdir": "audio",
         "info": "ESC-50 çevresel ses veri seti",
+    },
+    "nonspeech7k": {
+        "custom": "nonspeech7k",
+        "info": "Nonspeech7k sözsüz insan sesleri (çığlık, ağlama, öksürük, nefes...), Rashid vd. 2023 (~2.5 GB)",
+    },
+    "vocalsound": {
+        "url": "https://www.dropbox.com/s/c5ace70qh1vbyzb/vs_release_16k.zip?dl=1",
+        "info": "VocalSound sözsüz insan sesleri (iç çekme, öksürük...), Gong vd. 2022 (~1.7 GB)",
+    },
+    "vivae": {
+        "url": "https://zenodo.org/records/4066235/files/VIVAE.zip?download=1",
+        "info": "VIVAE sözsüz vokalizasyonlar (gerçek ağrı/inleme, yalnızca test), Holz vd. 2022",
+    },
+    "field": {
+        "manual": "Gerçek fısıltı/inleme kayıtları: data/human/field/<etiket>/<konuşmacı>/*.wav "
+                  "(etiket: whisper|moan|normal|stress|panic). Kaynaklar için docs/REAL_DATA.md.",
+        "info": "Elle eklenen gerçek kayıtlar (yalnızca test)",
     },
     "savee": {
         "manual": "Kayıt gerektirir: http://kahlan.eps.surrey.ac.uk/savee/ "
@@ -138,6 +156,22 @@ def fetch_tess(dest):
     sys.stdout.write("\n")
 
 
+NONSPEECH7K = "https://zenodo.org/records/6967442/files/"
+
+
+def fetch_nonspeech7k(dest):
+    """İki zip + etiketleri taşıyan iki metadata CSV'si."""
+    os.makedirs(dest, exist_ok=True)
+    for csv_name in ("metadata%20of%20train%20set%20.csv", "metadata%20of%20test%20set.csv"):
+        out = os.path.join(dest, urllib.request.unquote(csv_name).replace(" ", "_"))
+        urllib.request.urlretrieve(f"{NONSPEECH7K}{csv_name}?download=1", out)
+    for part in ("train", "test"):
+        with tempfile.TemporaryDirectory() as tmp:
+            zip_path = os.path.join(tmp, f"{part}.zip")
+            download(f"{NONSPEECH7K}{part}.zip?download=1", zip_path)
+            print(f"  {extract_wavs(zip_path, os.path.join(dest, part))} wav ({part})")
+
+
 def fetch(name, spec, force=False):
     dest = dataset_dir(name)
     print(f"[{name}] {spec['info']} — lisans: {LAYOUT[name].license}")
@@ -150,6 +184,9 @@ def fetch(name, spec, force=False):
         return False
     if spec.get("custom") == "tess":
         fetch_tess(dest)
+        return True
+    if spec.get("custom") == "nonspeech7k":
+        fetch_nonspeech7k(dest)
         return True
 
     with tempfile.TemporaryDirectory() as tmp:
