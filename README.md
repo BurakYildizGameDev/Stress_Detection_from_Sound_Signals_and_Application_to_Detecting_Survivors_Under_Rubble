@@ -22,6 +22,11 @@ that lasts long enough raises a single operator alarm on a live dashboard.
 
 ## Contents
 
+- [The story behind this project](#the-story-behind-this-project)
+- [Türkçe özet](#türkçe-özet)
+- [Project timeline](#project-timeline)
+- [Challenges and lessons learned](#challenges-and-lessons-learned)
+- [The real data problem](#the-real-data-problem)
 - [Why](#why)
 - [How it works](#how-it-works)
 - [Project structure](#project-structure)
@@ -34,6 +39,220 @@ that lasts long enough raises a single operator alarm on a live dashboard.
 - [Known limitations](#known-limitations)
 - [Roadmap](#roadmap)
 - [License](#license)
+
+---
+
+## The story behind this project
+
+On 6 February 2023, two major earthquakes centred in Kahramanmaraş struck southern
+Türkiye and northern Syria. Tens of thousands of people lost their lives and many
+more were trapped under collapsed buildings.
+
+I lived through that earthquake. I came out of it unharmed, but I saw what the
+region looked like in the days that followed. In the search-and-rescue work across
+the region, the same scene kept repeating: rescuers asked everyone around a
+collapsed building to fall completely silent, so they could listen for a voice, a
+moan or a knock coming from under the debris. Finding a living person often depended
+on someone hearing a very weak sound, in a noisy place, after days without sleep.
+
+That is where this project started. The question was simple:
+
+> Can a computer help rescuers listen? Can it keep listening without getting tired,
+> and point out the moments that most likely contain a person in distress?
+
+I began it as my final-year artificial intelligence course project, and kept working
+on it after the course ended. The goal was never to replace rescuers or their
+listening devices. It is to build an **honest, testable prototype** that shows what
+works, what does not, and what it would take to make it useful in the field.
+
+### What this project is, and what it is not
+
+| It is | It is not |
+|---|---|
+| A research prototype of an acoustic "second pair of ears" for rescue operators | A rescue decision tool. No one should be declared alive or dead by this system |
+| Openly evaluated, with its failures published next to its successes | Tested on audio recorded through real rubble (no such data exists in this project yet) |
+| A complete pipeline: data, features, models, live listener, dashboard, embedded prototype | Trained on real trapped people. All training speech is acted |
+
+---
+
+## Türkçe özet
+
+6 Şubat 2023 Kahramanmaraş depremini yaşadım. Sağlığım yerinde, ama sonraki günlerde
+bölgenin hâlini gördüm. Enkaz başında kurtarma ekipleri herkesten tam sessizlik
+istiyor, göçük altından gelebilecek bir sesi, inlemeyi ya da vuruşu dinliyordu. Bu
+proje oradan doğdu: **bilgisayar kurtarıcıların dinlemesine yardım edebilir mi?**
+
+Proje, yapay zekâ dersinin bitirme çalışması olarak başladı ve ders bittikten sonra da
+geliştirilmeye devam etti. Sistem iki aşamalı çalışır: önce seste insan sesi olup
+olmadığına karar verir, sonra bu sesin durumunu sınıflandırır (normal, stres, panik;
+deneysel v2'de fısıltı ve inleme de var). Art arda gelen acil durum pencereleri tek bir
+bölümde toplanır ve operatöre tek bir alarm gider. Canlı dinleyici, Streamlit paneli ve
+yalnızca simülasyonda test edilmiş bir ESP32-S3 prototipi var.
+
+En önemli sonuç şu: **sistem bugün sahada kullanılabilir değil ve bunun asıl sebebi
+gerçek veri eksikliği.** Eğitim verisinin tamamı oyuncuların okuduğu cümlelerden
+oluşuyor. Türkçe konuşma, gerçek fısıltı ve gerçek enkaz arkasından kaydedilmiş ses
+yok. Boğuk ve kısık sesler çoğunlukla "normal" sanılıyor. Aşağıdaki
+[Gerçek veri ihtiyacı](#the-real-data-problem) bölümü hangi verinin neden gerektiğini
+ve nasıl toplanabileceğini anlatıyor. AFAD, AKUT, üniversiteler ya da gönüllü kayıt
+yapmak isteyenlerle çalışmaya açığım.
+
+---
+
+## Project timeline
+
+The git history records how the project grew. In short:
+
+| Period | Phase | What happened |
+|---|---|---|
+| Nov 2025 | Start | Repository, audio loading, first acoustic features (RMS, zero-crossing rate, spectral centroid, MFCC) |
+| Nov – Dec 2025 | Data | Parsers for seven emotional-speech corpora and ESC-50; a download script, so licensed audio is never redistributed |
+| Dec 2025 – Jan 2026 | Robustness and splits | Rubble-like augmentation (noise, low-pass, attenuation); **speaker-disjoint** train/test splits |
+| Feb 2026 | Models | Stage 1 human detector and stage 2 emergency classifier (Random Forests); model metadata with feature specs |
+| Mar 2026 | Evaluation | Held-out speakers, unseen corpora and simulated rubble. The honest numbers turned out much lower than the first ones (see below) |
+| Mar – Apr 2026 | Live system | Episode and alarm logic, live microphone listener, Streamlit dashboard; course release on 24 April 2026 |
+| Sep 2026 | v2 | Whisper and moan classes, loudness-normalised features, VIVAE as a real external test set, non-verbal vocalisations for the human detector |
+| Sep 2026 | Embedded prototype | ESP32-S3 firmware, C export of the models, host and Wokwi simulators, GitHub Actions CI, three rounds of independent code review |
+
+---
+
+## Challenges and lessons learned
+
+This section is the most useful part of the project for anyone who wants to build
+something similar. Most of the work was not about getting a model to run; it was
+about finding out whether the numbers could be trusted.
+
+### 1. The first result was too good to be true
+
+The first emergency classifier scored **0.864 accuracy**. That number was produced
+with a random 80/20 split in which augmented copies of the same recording ended up
+on both sides, and the same speakers appeared in both training and test. The model
+was partly recognising voices it had already heard.
+
+After splitting by speaker, augmenting only the training side, and parsing labels
+from each corpus's own naming scheme, the comparable number is **0.666**. On a
+corpus the model has never seen it drops to 0.23–0.59 macro-F1. The lower number is
+the real one, and every later decision was based on it.
+
+**Lesson:** evaluate on speakers, recordings and corpora the model has never seen,
+and treat a very high first score as a bug report.
+
+### 2. The model learned "loud means emergency"
+
+The first features included absolute loudness and brightness. Stressed and
+panicked actors speak louder, so the model partly learned that loud, bright audio is
+an emergency. Under rubble every voice is quiet and muffled. Under simulated rubble
+(400 Hz low-pass, −20 dB, noise) the model missed **99.5%** of emergencies.
+
+v2 normalises loudness before computing features and adds randomised rubble
+augmentation to every class. It helps, but simulated rubble is still the weakest
+condition.
+
+### 3. Synthetic data can hide failure
+
+There is no public dataset of trapped people whispering or moaning, so v2 generates
+whispers and moans from acted speech (`whisper_converter.py`). On that synthetic
+data, whisper and moan recall is about **0.97**. On 89 real moans from the VIVAE
+corpus, the emergency classifier recognised **0**. It had learned what the
+converter produces ("low-passed audio = moan"), not what a real moan sounds like.
+
+**Lesson:** a synthetic test set measures the generator. Real recordings must be
+kept as a separate test set that is never trained on (`eval_only` in `dataset.py`).
+
+### 4. The first stage threw survivors away
+
+The human detector was trained on speech. A person who moans, cries or screams
+instead of talking was classified as "not human" 95% of the time, so the second
+stage never heard them. Adding non-verbal human sounds (VocalSound, Nonspeech7k,
+ESC-50 breathing and crying) raised real non-verbal recall from 0.05 to about 0.70,
+but birds and other animals started to trigger it too. Extra augmentation did not
+separate "animal call" from "human moan": MFCC statistics with Random Forests seem
+to have hit their ceiling here.
+
+The decision threshold is therefore a trade-off: at 20% false alarms about 70% of
+real vocalisations are caught; at 10%, only about 40%. It is chosen on held-out
+training speakers, never on the test set.
+
+### 5. Getting data at all
+
+- Several useful corpora are licensed for research only, or need an access request
+  (wTIMIT, AISHELL-6 Whisper). The CHAINS whisper corpus server was unreachable.
+- Nonspeech7k's training archive (2.3 GB) would have taken about **8 hours** to
+  download, so only its test part is used.
+- There is **no Turkish speech** in the training data, although the target
+  deployment is in Türkiye.
+
+### 6. Working on a laptop
+
+Everything was built and trained on a laptop. Feature extraction over all corpora
+takes 25–30 minutes, so experiments had to be planned carefully, run with `--quick`
+options, and cached.
+
+### 7. Putting the model on a microcontroller
+
+A rescuer cannot carry a laptop into every void, so the last phase ports the system
+to an ESP32-S3 microcontroller:
+
+- The v2 Random Forests were 0.9 and 2.3 million nodes; converted to C they would
+  have been tens of megabytes. Smaller forests were chosen by a size/accuracy sweep
+  to fit the flash.
+- The cost weights that suited the big model (whisper ×8, moan ×6) made the small
+  models flag 59–93% of normal speech, so they are not used there.
+- The first C exporter wrote thresholds with six decimals. In a test with
+  small-valued features, 12% of its output probabilities were wrong. It now rounds thresholds
+  exactly as float32 and is tested by compiling the generated C code.
+- There was no hardware to test on, so the firmware is tested in layers: the C core
+  against the Python code on the host, the whole decision path on real audio files in
+  a host simulator, and a Wokwi scenario for the simulated chip.
+
+### 8. Independent review
+
+The embedded work went through three rounds of review by a second AI coding tool
+(Codex), and every finding was checked against the code. Real bugs were fixed: a
+stream-buffer write that could shift every audio sample, unchecked I2S errors, a
+timer overflow in the dashboard bridge, NaN handling in the exported trees, and model
+selection that had looked at the test set. One finding was rejected with a written
+proof and a test.
+
+**Lesson:** "the tests pass" is not the same as "the code is right". An outside
+reviewer finds the questions you did not think to ask.
+
+---
+
+## The real data problem
+
+The most important conclusion of this project is that **the models are limited by
+data, not by code.** No choice of algorithm can learn what a person calling for help
+from under concrete sounds like, without ever hearing it.
+
+What is needed, and why:
+
+| Data | Why it matters | Status |
+|---|---|---|
+| **Recordings through real debris** | Rubble is not a simple low-pass filter. Concrete, voids and steel change sound in ways the simulation cannot reproduce | None. `sweep_rir.py` can measure the acoustic response of a real void, which would calibrate `rubble_acoustics.py` |
+| **Turkish speech**, including distress phrases ("buradayım", "yardım edin", "sesimi duyan var mı") | The target deployment is in Türkiye; language and prosody affect the features | None |
+| **Real whispers** | A trapped person may only be able to whisper; whisper recall is known only on synthetic audio | None (CHAINS / wTIMIT / own recordings planned) |
+| **Real moans, groans, crying** | The current real test set (VIVAE) is acted studio vocalisation, and only 89 moans | Test only |
+| **Knocking and tapping** through concrete | Often the most realistic signal from under rubble; it carries through concrete better than a voice | Not implemented |
+| **Site noise with no person present** (generators, excavators, other rescuers) | Needed to measure false alarms per hour in realistic conditions | None |
+| **Recordings from the target microphone** (INMP441 on ESP32-S3) | Calibrates the silence threshold and input level of the device | None |
+
+How this data could be collected safely:
+
+- **Only with volunteers who are not in danger,** with written consent that states
+  the purpose. Never record people who are actually injured or trapped.
+- A controlled protocol, already written down in [docs/REAL_DATA.md](docs/REAL_DATA.md)
+  and [docs/EVALUATION.md](docs/EVALUATION.md): at least ten speakers, the same short
+  Turkish phrases spoken normally and whispered, a few moans, several distances and
+  barriers, recorded with both a phone and the target microphone.
+- The best setting would be a collapsed-building **training site** of AFAD, AKUT or a
+  similar organisation, where volunteers can speak from inside a void while sensors
+  listen from outside.
+- Real recordings are always kept as a separate **test** set first, so that any
+  improvement they bring is measured honestly.
+
+If you work in search and rescue, run a training site, work on audio research, or
+would like to contribute recordings, please open an issue on this repository.
 
 ---
 
